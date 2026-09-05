@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RivalryStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+enum ActivityType {
+  PUSH
+  STAR
+  FORK
+  CREATE_REPO
+  PR
+  MERGE
+  ISSUE
+}
+
+model User {
+  id                String     @id @default(cuid())
+  github_username   String     @unique
+  email             String     @unique
+
+  following_count    Int        @default(0)
+  starred_repo_count Int        @default(0)
+
+  total_commits     Int        @default(0)
+  current_streak    Int        @default(0)
+  longest_streak    Int        @default(0)
+
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
+
+  repositories      Repository[]
+  activities        Activity[]
+  rivalriesAsUser1  Rivalry[]  @relation("RivalryUser1")
+  rivalriesAsUser2  Rivalry[]  @relation("RivalryUser2")
+}
+
+model Rivalry {
+  id            String        @id @default(cuid())
+  user1_id      String
+  user2_id      String
+  status        RivalryStatus @default(PENDING)
+  started_at    DateTime?
+  ends_at       DateTime?
+  rivalry_score Int           @default(0)
+  user1_score   Int           @default(0)
+  user2_score   Int           @default(0)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+
+  user1         User          @relation("RivalryUser1", fields: [user1_id], references: [id])
+  user2         User          @relation("RivalryUser2", fields: [user2_id], references: [id])
+
+  @@index([user1_id])
+  @@index([user2_id])
+}
+
+model Repository {
+  id                String    @id @default(cuid())
+  github_repo_id    Int       @unique
+  user_id           String
+  name              String
+  description       String?
+  language          String?
+  is_fork           Boolean   @default(false)
+  github_url        String
+  github_created_at DateTime
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  user              User      @relation(fields: [user_id], references: [id])
+  activities        Activity[]
+
+  @@index([user_id])
+}
+
+model Activity {
+  id              String       @id @default(cuid())
+  user_id         String
+  type            ActivityType
+  repository_id   String?
+  github_event_id String       @unique
+  metadata        Json?
+  points_awarded  Int          @default(0)
+  created_at      DateTime     @default(now())
+
+  user            User         @relation(fields: [user_id], references: [id])
+  repository      Repository?  @relation(fields: [repository_id], references: [id])
+
+  @@index([user_id, type])
+  @@index([repository_id])
+}
