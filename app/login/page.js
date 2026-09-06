@@ -22,7 +22,7 @@ export default function LoginPage() {
 
     const handleSignIn = () => {
         setLoading(true)
-        signIn('github', { callbackUrl: '/' })
+        signIn('github', { callbackUrl: '/dashboard' })
     }
 
     if (loading) {
