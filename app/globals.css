@@ -133,6 +133,29 @@
   }
 }
 
+.git-graph-scroll {
+  scrollbar-width: thick;
+  scrollbar-color: #4ade80 transparent;
+}
+
+.git-graph-scroll::-webkit-scrollbar {
+  height: 28px;
+}
+
+.git-graph-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.git-graph-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #22c55e, #4ade80, #86efac);
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+}
+
+.git-graph-scroll:hover::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #4ade80, #a7f3d0, #86efac);
+  box-shadow: 0 0 14px rgba(74, 222, 128, 0.9);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

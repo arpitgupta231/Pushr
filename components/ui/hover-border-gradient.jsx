@@ -26,16 +26,16 @@ export function HoverBorderGradient({
   };
 
   const movingMap = {
-    TOP: "radial-gradient(20.7% 50% at 50% 0%, hsl(0, 0%, 100%) 0%, rgba(255, 255, 255, 0) 100%)",
-    LEFT: "radial-gradient(16.6% 43.1% at 0% 50%, hsl(0, 0%, 100%) 0%, rgba(255, 255, 255, 0) 100%)",
+    TOP: "radial-gradient(20.7% 50% at 50% 0%, #0969da 0%, rgba(255, 255, 255, 0) 100%)",
+    LEFT: "radial-gradient(16.6% 43.1% at 0% 50%, #e6edf3 0%, rgba(255, 255, 255, 0) 100%)",
     BOTTOM:
-      "radial-gradient(20.7% 50% at 50% 100%, hsl(0, 0%, 100%) 0%, rgba(255, 255, 255, 0) 100%)",
+      "radial-gradient(20.7% 50% at 50% 100%, #0969da 0%, rgba(255, 255, 255, 0) 100%)",
     RIGHT:
-      "radial-gradient(16.2% 41.199999999999996% at 100% 50%, hsl(0, 0%, 100%) 0%, rgba(255, 255, 255, 0) 100%)",
+      "radial-gradient(16.2% 41.2% at 100% 50%, #e6edf3 0%, rgba(255, 255, 255, 0) 100%)",
   };
 
   const highlight =
-    "radial-gradient(75% 181.15942028985506% at 50% 50%, #3275F8 0%, rgba(255, 255, 255, 0) 100%)";
+    "radial-gradient(75% 181.15942028985506% at 50% 50%, #0969da 0%, rgba(255, 255, 255, 0) 100%)";
 
   useEffect(() => {
     if (!hovered) {
@@ -57,7 +57,7 @@ export function HoverBorderGradient({
       )}
       {...props}>
       <div
-        className={cn("w-auto text-white z-10 bg-black px-4 py-2 rounded-[inherit]", className)}>
+        className={cn("w-auto text-white z-10 bg-[#0d1117] px-4 py-2 rounded-[inherit]", className)}>
         {children}
       </div>
       <motion.div
@@ -75,7 +75,7 @@ export function HoverBorderGradient({
             : movingMap[direction],
         }}
         transition={{ ease: "linear", duration: duration ?? 1 }} />
-      <div className="bg-black absolute z-1 flex-none inset-[6px] rounded-[100px]" />
+      <div className="bg-[#0d1117] absolute z-1 flex-none inset-[6px] rounded-[100px]" />
     </Tag>
   );
 }

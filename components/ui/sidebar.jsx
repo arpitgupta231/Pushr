@@ -65,20 +65,21 @@ export const DesktopSidebar = ({
     <>
       <motion.div
         className={cn(
-          "hidden md:flex md:flex-col md:my-4 md:ml-4 md:h-[calc(100svh-2rem)] md:rounded-2xl px-4 py-4 bg-zinc-950 border border-white/10 shadow-2xl shadow-black/40 w-[300px] shrink-0 relative",
+          "hidden md:flex md:flex-col md:my-4 md:ml-4 md:h-[calc(100svh-2rem)] md:rounded-2xl px-4 py-4 bg-zinc-950 border border-white/10 shadow-2xl shadow-black/40 w-[320px] shrink-0 relative",
           className
         )}
         animate={{
-          width: animate ? (open ? "300px" : "60px") : "300px",
+          width: animate ? (open ? "320px" : "60px") : "320px",
         }}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         {...props}
       >
         <BorderBeam
-          size={140}
+          size={open ? 140 : 40}
           duration={8}
           borderWidth={2}
+          borderRadius={16}
           colorFrom="#AAFFFF"
           colorTo="#FFAAFF"
         />

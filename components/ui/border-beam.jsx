@@ -15,6 +15,7 @@ export const BorderBeam = ({
   reverse = false,
   initialOffset = 0,
   borderWidth = 1,
+  borderRadius,
 }) => {
   return (
     <div
@@ -29,7 +30,7 @@ export const BorderBeam = ({
         )}
         style={{
           width: size,
-          offsetPath: `rect(0 auto auto 0 round ${size}px)`,
+          offsetPath: `rect(0 auto auto 0 round ${borderRadius ?? size}px)`,
           "--color-from": colorFrom,
           "--color-to": colorTo,
         }}
