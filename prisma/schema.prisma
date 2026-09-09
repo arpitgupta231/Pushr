@@ -69,6 +69,7 @@ model Repository {
   github_repo_id    Int       @unique
   user_id           String
   name              String
+  full_name         String
   description       String?
   language          String?
   is_fork           Boolean   @default(false)
@@ -76,8 +77,9 @@ model Repository {
   github_created_at DateTime
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
+  private           Boolean   @default(false)
 
-  user              User      @relation(fields: [user_id], references: [id])
+  user              User      @relation(fields: [user_id], references: [github_username])
   activities        Activity[]
 
   @@index([user_id])
