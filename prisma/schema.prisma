@@ -26,7 +26,7 @@ enum ActivityType {
 model User {
   id                String     @id @default(cuid())
   github_username   String     @unique
-  email             String     @unique
+  email             String?     @unique
 
   following_count    Int        @default(0)
   starred_repo_count Int        @default(0)

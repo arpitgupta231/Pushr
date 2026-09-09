@@ -211,11 +211,11 @@ export default function DashboardPage() {
               <p className="mb-4 font-sans text-sm font-semibold text-zinc-200">
                 Repositories
               </p>
-              <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden items-center">
+              <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden items-center py-2 ">
                 {mockRepositories.map((repo) => (
                   <div
                     key={repo.name}
-                    className="h-fit shrink-0  overflow-hidden w-[95%] border border-green-500/40 bg-zinc-900/60 p-3 shadow-lg shadow-green-950/20"
+                    className="h-fit shrink-0 hover:scale-105 overflow-hidden w-[95%] border border-green-500/40 bg-zinc-900/60 p-3 shadow-lg shadow-green-950/20 transition-all duration-300 cursor-pointer"
                   >
                     <div className="mb-2 flex items-center justify-between gap-4">
                       <p className="text-2xl font-semibold text-zinc-200">
