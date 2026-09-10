@@ -22,11 +22,12 @@ function buildLayout(commits) {
   const laneOf = {};
   let nextLane = 1;
   return commits.map((c, i) => {
-    if (!(c.branch in laneOf)) {
-      laneOf[c.branch] = c.branch === "main" ? 0 : nextLane++;
+    const branch = c.branch ?? "main";
+    if (!(branch in laneOf)) {
+      laneOf[branch] = branch === "main" ? 0 : nextLane++;
     }
-    const lane = laneOf[c.branch];
-    return { ...c, x: PAD_LEFT + i * X_SPACING, lane, y: laneY(lane) };
+    const lane = laneOf[branch];
+    return { ...c, branch, x: PAD_LEFT + i * X_SPACING, lane, y: laneY(lane) };
   });
 }
 
@@ -88,8 +89,8 @@ export function ChartContainer({
 
   // Approximate tooltip size, used for placement decisions
   const TOOLTIP_GAP = 12;
-  const TOOLTIP_H = 84;
-  const TOOLTIP_HALF_W = 130;
+  const TOOLTIP_H = 96;
+  const TOOLTIP_HALF_W = 165;
 
   const placeTooltip = React.useCallback((el) => {
     const root = rootRef.current;
@@ -261,7 +262,7 @@ export function ChartContainer({
 
       {hovered && tooltipPos && (
         <div
-          className="pointer-events-none absolute z-50 max-w-[260px] border border-white/10 bg-zinc-900 px-3 py-2 shadow-2xl shadow-black/40"
+          className="pointer-events-none absolute z-[100] max-w-[330px] border border-white/10 bg-zinc-900 px-4 py-3 shadow-2xl shadow-black/40 tracking-tight"
           style={{
             left: tooltipPos.left,
             top: tooltipPos.top,
@@ -273,7 +274,12 @@ export function ChartContainer({
           <p className="font-mono text-xs font-semibold text-green-400">
             {hovered.node.sha}
           </p>
-          <p className="mt-0.5 text-sm text-zinc-200">{hovered.node.message}</p>
+          <p
+            title={hovered.node.message}
+            className="mt-0.5 line-clamp-3 text-sm break-words text-zinc-200"
+          >
+            {hovered.node.message}
+          </p>
           <p className="mt-0.5 text-xs text-zinc-500">{hovered.node.date}</p>
         </div>
       )}
