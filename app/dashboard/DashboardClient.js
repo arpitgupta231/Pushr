@@ -9,7 +9,7 @@ import { Navbar, NavBody, MobileNav, MobileNavHeader, MobileNavMenu, MobileNavTo
 import { WobbleCard } from "@/components/ui/wobble-card";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import { Meteors } from "@/components/ui/meteors";
-import { ChartContainer } from "@/components/ui/chart";
+import { ContributionGraph } from "@/components/ui/contribution-graph";
 import { useSession, signOut } from "next-auth/react";
 
 const navItems = [
@@ -33,6 +33,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
   // Server data wins, client session is the fallback (e.g. after client-side refresh).
   const displayName = user?.githubUsername ?? session?.user?.githubUsername ?? session?.user?.name ?? "you";
   const githubUsername = user?.githubUsername ?? session?.user?.githubUsername ?? "";
+  const avatarUrl = user?.avatarUrl ?? session?.user?.image ?? null;
   const avatarInitial = displayName?.charAt(0) ?? "?";
 
   function openGithubProfile() {
@@ -78,9 +79,19 @@ export default function DashboardClient({ user, repositories = [], activities = 
                 </div>
               </div>
               <div className="flex flex-row items-center gap-2 cursor-pointer">
-                <div className="flex px-3 -left-0.5 py-1.5 w-fit  items-center justify-center rounded-full bg-indigo-500/20">
-                  <span className="text-sm font-semibold text-indigo-400">{avatarInitial}</span>
-                </div>
+                {avatarUrl ? (
+                  <Image
+                    src={avatarUrl}
+                    alt={displayName}
+                    width={32}
+                    height={32}
+                    className="rounded-full border border-indigo-500/40"
+                  />
+                ) : (
+                  <div className="flex px-3 -left-0.5 py-1.5 w-fit  items-center justify-center rounded-full bg-indigo-500/20">
+                    <span className="text-sm font-semibold text-indigo-400">{avatarInitial}</span>
+                  </div>
+                )}
                 <SidebarText className="text-sm text-white">
                   {displayName}
                 </SidebarText>
@@ -150,8 +161,8 @@ export default function DashboardClient({ user, repositories = [], activities = 
 
                 <div className="image w-full flex mt-3 justify-center h-fit  py-2">
                   <Image
-                    src="/default.png"
-                    alt=""
+                    src={avatarUrl ?? "/default.png"}
+                    alt={displayName}
                     width={210}
                     height={210}
                     className="rounded-full border-2 border-green-500 z-20"
@@ -163,7 +174,8 @@ export default function DashboardClient({ user, repositories = [], activities = 
                       @{displayName}
                     </p>
                     <p className="text-sm text-zinc-400">
-                      Avid star coder. Pushes harder because the bro pushes.
+                      {user?.bio?.trim() ||
+                        "Avid star coder. Pushes harder because the bro pushes."}
                     </p>
                   </div>
                 </div>
@@ -202,7 +214,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
                         </HoverBorderGradient>
                       </div >
                       <div className="p-1.5 border border-zinc-800">
-                        <ChartContainer commits={repo.commits} className="w-full   h-fit border border-green-500" />
+                        <ContributionGraph commits={repo.commits} className="w-full h-fit border border-green-500" />
                       </div>
                     </div>
                   ))

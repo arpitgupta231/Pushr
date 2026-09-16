@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getRepoCommits } from "@/lib/github";
+import { getRepoCommits, getUserData } from "@/lib/github";
 import DashboardClient from "./DashboardClient";
 
 // Cache the dashboard (incl. GitHub commit fetches) for 5 minutes
@@ -46,8 +46,9 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  // 3. Fetch everything for this verified user directly from the DB.
-  const [dbRepos, dbActivities, dbRivalry] = await Promise.all([
+  // 3. Fetch everything for this verified user directly from the DB,
+  // plus the GitHub avatar + bio for the sidebar / profile card.
+  const [dbRepos, dbActivities, dbRivalry, githubProfile] = await Promise.all([
     prisma.repository.findMany({
       where: { user_id: dbUser.github_username },
       orderBy: { github_created_at: "desc" },
@@ -84,11 +85,21 @@ export default async function DashboardPage() {
         user2: { select: { github_username: true } },
       },
     }),
+    // GitHub profile for the avatar + bio. Never blocks the dashboard —
+    // avatar falls back to the session image, then to the local placeholder.
+    getUserData(githubUsername)
+      .then((d) => ({
+        avatarUrl: d?.avatar_url ?? null,
+        bio: d?.bio ?? null,
+      }))
+      .catch(() => ({ avatarUrl: null, bio: null })),
   ]);
 
   const user = {
     id: dbUser.id,
     githubUsername: dbUser.github_username,
+    avatarUrl: githubProfile.avatarUrl ?? session.user.image ?? null,
+    bio: githubProfile.bio,
     email: dbUser.email,
     following_count: dbUser.following_count,
     starred_repo_count: dbUser.starred_repo_count,
