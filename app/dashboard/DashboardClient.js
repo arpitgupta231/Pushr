@@ -10,6 +10,7 @@ import { WobbleCard } from "@/components/ui/wobble-card";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import { Meteors } from "@/components/ui/meteors";
 import { ContributionGraph } from "@/components/ui/contribution-graph";
+import { ActivityHeatmap } from "@/components/ui/activity-heatmap";
 import { useSession, signOut } from "next-auth/react";
 
 const navItems = [
@@ -24,7 +25,7 @@ const links = [
   { label: "People", href: "/people", icon: <Activity className="h-5 w-5 text-white dark:text-neutral-200" /> },
 ];
 
-export default function DashboardClient({ user, repositories = [], activities = [], rivalry = null }) {
+export default function DashboardClient({ user, repositories = [], activities = [], rivalry = null, contributionDays = [], contributionTotal = 0, contributionYear = new Date().getFullYear() }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -99,7 +100,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
             </div>
           </SidebarBody>
         </Sidebar>
-        <div className={`relative flex h-full min-w-0 flex-1 flex-col items-center  mt-2 ${sidebarOpen ? "pl-6": ":"}`}>
+        <div className={`relative flex h-full min-w-0 flex-1 flex-col items-center  mt-2 ${sidebarOpen ? "pl-6" : ":"}`}>
           <Navbar className="fixed left-1/2 top-2 z-40 w-fit -translate-x-1/2 rounded-4xl border border-white/10 shadow-2xl shadow-black/40 backdrop-blur-4xl bg-zinc-800">
             <NavBody>
               <div className="hidden flex-1 flex-row items-center justify-center space-x-2 lg:flex">
@@ -168,25 +169,33 @@ export default function DashboardClient({ user, repositories = [], activities = 
                     className="rounded-full border-2 border-green-500 z-20"
                   />
                 </div>
-                <div className="flex mt-3 h-fit w-full flex-col  gap-3 items-center ">
+                <div className="flex mt-3 h-fit w-full justify-between gap-3 px-1.5 items-center">
                   <div>
                     <p className="font-mono text-lg font-semibold text-zinc-200">
                       @{displayName}
                     </p>
                     <p className="text-sm text-zinc-400">
                       {user?.bio?.trim() ||
-                        "Avid star coder. Pushes harder because the bro pushes."}
+                        "No Bio."}
                     </p>
                   </div>
+                  <div className="flex self-stretch items-center">
+                    <HoverBorderGradient
+                      onClick={openGithubProfile}
+                      className="px-3 py-1 text-xs text-white bg-black transition-colors duration-500 hover:bg-white hover:text-black"
+                    >
+                      Open in GitHub
+                    </HoverBorderGradient>
+                  </div>
+
                 </div>
-              </div>
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
-                <HoverBorderGradient
-                  onClick={openGithubProfile}
-                  className="text-white bg-black transition-colors duration-500 hover:bg-white hover:text-black"
-                >
-                  Open in GitHub
-                </HoverBorderGradient>
+                <div className="relative z-20 mt-2 pb-24">
+                  <ActivityHeatmap
+                    days={contributionDays}
+                    total={contributionTotal}
+                    year={contributionYear}
+                  />
+                </div>
               </div>
             </WobbleCard>
             <div className={`flex w-[54vw] h-[85vh] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/80 p-6 shadow-2xl shadow-black/40 ${sidebarOpen ? "absolute right-6 top-3" : ""}`}>

@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getRepoCommits, getUserData } from "@/lib/github";
+import { getRepoCommits, getUserContributionDays, getUserData } from "@/lib/github";
 import DashboardClient from "./DashboardClient";
 
 // Cache the dashboard (incl. GitHub commit fetches) for 5 minutes
@@ -141,6 +141,18 @@ export default async function DashboardPage() {
     repository_id: a.repository_id,
   }));
 
+  // Year-wide contribution calendar via GraphQL for the profile heatmap.
+  // Uses the viewer's OAuth token (private contribs included); falls back
+  // to GITHUB_TOKEN inside the fetcher. Never blocks the dashboard.
+  const currentYear = new Date().getFullYear();
+  const accessToken = session?.accessToken ?? null;
+  const contributions = await getUserContributionDays(
+    githubUsername,
+    `${currentYear}-01-01T00:00:00Z`,
+    `${currentYear}-12-31T23:59:59Z`,
+    accessToken
+  ).catch(() => ({ days: [], total: 0 }));
+
   const rivalry = dbRivalry
     ? {
         id: dbRivalry.id,
@@ -160,6 +172,9 @@ export default async function DashboardPage() {
       repositories={repositories}
       activities={activities}
       rivalry={rivalry}
+      contributionDays={contributions.days}
+      contributionTotal={contributions.total}
+      contributionYear={currentYear}
     />
   );
 }
