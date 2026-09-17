@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Activity, GitFork, LayoutDashboard, Rocket, Swords } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink, SidebarText } from "@/components/ui/sidebar";
 import { Navbar, NavBody, MobileNav, MobileNavHeader, MobileNavMenu, MobileNavToggle } from "@/components/ui/resizable-navbar";
@@ -15,7 +15,7 @@ import { useSession, signOut } from "next-auth/react";
 
 const navItems = [
   { name: "Dashboard", link: "/dashboard" },
-  { name: "Rival", link: "/rivalry" },
+  { name: "Rival", link: "/rival" },
 ];
 
 const links = [
@@ -28,6 +28,7 @@ const links = [
 export default function DashboardClient({ user, repositories = [], activities = [], rivalry = null, contributionDays = [], contributionTotal = 0, contributionYear = new Date().getFullYear() }) {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -107,24 +108,25 @@ export default function DashboardClient({ user, repositories = [], activities = 
                 {navItems.map((item) => {
                   const isActive = pathname === item.link;
                   return (
-                    <a
+                    <button
                       key={item.link}
-                      href={item.link}
+                      type="button"
+                      onClick={() => router.push(item.link)}
                       className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? "bg-white text-black" : "text-zinc-400 hover:text-white"
                         }`}
                     >
                       {item.name}
-                    </a>
+                    </button>
                   );
                 })}
               </div>
             </NavBody>
             <MobileNav>
               <MobileNavHeader>
-                <a href="/dashboard" className="flex items-center space-x-2">
+                <button type="button" onClick={() => router.push("/dashboard")} className="flex items-center space-x-2">
                   <Rocket className="h-6 w-6 text-indigo-500" />
                   <span className="text-lg font-semibold text-indigo-500">Pushr</span>
-                </a>
+                </button>
                 <MobileNavToggle
                   isOpen={isMobileMenuOpen}
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -134,15 +136,18 @@ export default function DashboardClient({ user, repositories = [], activities = 
                 {navItems.map((item) => {
                   const isActive = pathname === item.link;
                   return (
-                    <a
+                    <button
                       key={item.link}
-                      href={item.link}
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      type="button"
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        router.push(item.link);
+                      }}
                       className={`w-full rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? "bg-white text-black" : "text-zinc-400 hover:text-white"
                         }`}
                     >
                       {item.name}
-                    </a>
+                    </button>
                   );
                 })}
               </MobileNavMenu>

@@ -184,15 +184,20 @@ export function ActivityHeatmap({
         </div>
 
         <div className="flex gap-1.5">
-          <div className="flex flex-col justify-around py-4" aria-hidden="true">
-            {WEEKDAY_LABELS.map((label, i) => (
-              <span
-                key={i}
-                className="h-[11px] text-[9px] leading-[11px] text-zinc-500"
-              >
-                {label}
-              </span>
-            ))}
+          <div className="flex shrink-0 flex-col" aria-hidden="true">
+            {/* Spacer matching the month-label header height (10px text + 4px mb-1) */}
+            <span className="h-[14px] shrink-0" />
+            {/* Same row pitch as the grid: 11px cells + 3px gaps */}
+            <div className="flex flex-col" style={{ gap: 3 }}>
+              {WEEKDAY_LABELS.map((label, i) => (
+                <span
+                  key={i}
+                  className="flex h-[11px] items-center text-[9px] leading-none text-zinc-500"
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
 
           <div className="min-w-0 flex-1">
