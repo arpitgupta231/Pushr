@@ -21,7 +21,7 @@ const starRegenerationInterval = 5000;
 const percentToRegenerate = 0.15;
 
 const shootingStarPixelSize = 2;
-const targetFps = 16;
+const targetFps = 24;
 
 export const BackgroundPixelStars = memo(
   () => {
