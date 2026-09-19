@@ -47,10 +47,12 @@ function toEventsApiShape(deliveryId, githubEvent, payload) {
                     ref: payload.ref ?? null,
                     head: payload.after ?? null,
                     size: commits.length,
+                    // Raw shape on purpose: toActivityRow() does the
+                    // short-sha / first-line / author shaping exactly once.
                     commits: commits.slice(0, 10).map((c) => ({
-                        sha: c.id?.slice(0, 7) ?? null,
-                        message: c.message?.split("\n")[0]?.slice(0, 120) ?? null,
-                        author: c.author?.name ?? c.author?.email ?? null,
+                        sha: c.id ?? null,
+                        message: c.message ?? null,
+                        author: c.author ?? null,
                     })),
                 },
             };
@@ -175,14 +177,74 @@ export async function POST(req) {
         return NextResponse.json({ stored: false, reason: "unsupported-event" });
     }
 
-    const githubRepoId = payload.repository?.id;
+    // Link the activity to its repository, auto-creating the row from the
+    // delivery when it was never synced. user_id must reference an existing
+    // user, so creation only happens when the repo owner (or the sender)
+    // is in our DB — otherwise repository_id stays null.
     let repository_id = null;
-    if (typeof githubRepoId === "number") {
+    const repoPayload = payload.repository;
+    if (repoPayload && typeof repoPayload.id === "number") {
         const dbRepo = await prisma.repository.findUnique({
-            where: { github_repo_id: githubRepoId },
+            where: { github_repo_id: repoPayload.id },
             select: { id: true },
         });
-        repository_id = dbRepo?.id ?? null;
+        if (dbRepo) {
+            repository_id = dbRepo.id;
+        } else {
+            const ownerLogin = repoPayload.owner?.login ?? null;
+            let ownerRow = null;
+            for (const login of [ownerLogin, username]) {
+                if (!login) continue;
+                ownerRow = await prisma.user.findUnique({
+                    where: { github_username: login },
+                    select: { github_username: true },
+                });
+                if (ownerRow) break;
+            }
+            if (ownerRow) {
+                const createdAt =
+                    typeof repoPayload.created_at === "number"
+                        ? new Date(repoPayload.created_at * 1000) // webhook sends unix seconds
+                        : repoPayload.created_at
+                          ? new Date(repoPayload.created_at)
+                          : new Date();
+                const shortName =
+                    repoPayload.name ?? repoPayload.full_name?.split("/")[1] ?? "unknown";
+                try {
+                    const createdRepo = await prisma.repository.create({
+                        data: {
+                            github_repo_id: repoPayload.id,
+                            user_id: ownerRow.github_username,
+                            name: shortName,
+                            full_name:
+                                repoPayload.full_name ??
+                                `${ownerRow.github_username}/${shortName}`,
+                            description: repoPayload.description ?? null,
+                            private: repoPayload.private ?? false,
+                            language: repoPayload.language ?? null,
+                            is_fork: repoPayload.fork ?? false,
+                            github_url:
+                                repoPayload.html_url ??
+                                `https://github.com/${repoPayload.full_name ?? ""}`,
+                            github_created_at: createdAt,
+                        },
+                        select: { id: true },
+                    });
+                    repository_id = createdRepo.id;
+                } catch (e) {
+                    // Raced with the repo sync — re-read the winner.
+                    if (e?.code === "P2002") {
+                        const reread = await prisma.repository.findUnique({
+                            where: { github_repo_id: repoPayload.id },
+                            select: { id: true },
+                        });
+                        repository_id = reread?.id ?? null;
+                    } else {
+                        console.error("webhook auto-create repo failed:", e);
+                    }
+                }
+            }
+        }
     }
 
     try {
