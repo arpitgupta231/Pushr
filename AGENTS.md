@@ -94,6 +94,10 @@ PostgreSQL is the chosen database.
 
 Prisma or another PostgreSQL ORM can be used.
 
+Migration warning: the database has drifted from the local migration history (unrecorded `Repository.private`, nullable `User.email`, applied-but-missing migration `20260909211513`). `prisma migrate dev` therefore demands a destructive reset — do NOT run it. Use `prisma db push` for schema changes until the history is baselined, and never reset the shared database.
+
+Delete behavior: every relation uses `onDelete: Cascade`, so deleting a `User` in Prisma Studio (or code) automatically removes their repositories, activities, and rivalries — no manual child-first ordering needed. Without this, deletes fail with `P2003` foreign-key violations.
+
 The current conceptual database has these core tables.
 
 ### Users
@@ -411,6 +415,26 @@ Rivalry score: 24,460
 ```
 
 Do not introduce a separate ranking tier system.
+
+## Friends (Mutual Follows)
+
+A friend is a **mutual** GitHub follow: user A follows user B **and** user B follows user A. One-sided follows are never friends.
+
+```text
+users
+
+friends String[]  // GitHub usernames (logins) of mutual follows only
+```
+
+Rules:
+
+- `friends` stores GitHub usernames only — no separate friends table, no avatar snapshots in the DB. Avatars resolve at render time from the fresh `following` response filtered to stored usernames, so the sidebar hover list needs zero extra API calls.
+- Compute by fetching `GET /users/{u}/followers` and `GET /users/{u}/following` and keeping the logins present in both (`getMutualFollows` in `lib/github.js`). Never do N per-user follow-back checks.
+- `syncUserFriends` in `lib/github.js` fetches, intersects, rewrites `User.friends` with its own response, and returns that response for rendering — one call, DB write included. Callers (`lib/auth.js`, dashboard `page.js`) use its return for display and never write `friends` themselves.
+- A failed fetch returns `null` and leaves the stored array untouched, so a rate-limit hiccup never wipes good data. Empty array = genuinely no mutuals.
+- Sync on sign-in (`lib/auth.js` with the fresh OAuth token, non-blocking like repo sync) and refresh server-side on dashboard load inside the shared 5-minute cache.
+- Rate-limit guards: follow RFC 5988 `Link` pagination, cap at 5 pages (500 entries) per list, fail soft to `[]`. Following/follower lists are public — no extra OAuth scope needed.
+- Sidebar UX: Friends is an **inline hover accordion** that expands below the entry and pushes later entries down (not a floating popup), with an internal scrollable list. The header toggles on click for touch devices.
 
 ## Scoring
 

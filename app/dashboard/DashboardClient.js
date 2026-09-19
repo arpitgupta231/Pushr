@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, GitFork, LayoutDashboard, Rocket, Swords } from "lucide-react";
+import { Activity, ChevronDown, GitFork, LayoutDashboard, Rocket, Users } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink, SidebarText } from "@/components/ui/sidebar";
 import { Navbar, NavBody, MobileNav, MobileNavHeader, MobileNavMenu, MobileNavToggle } from "@/components/ui/resizable-navbar";
 import { WobbleCard } from "@/components/ui/wobble-card";
@@ -20,14 +20,15 @@ const navItems = [
 
 const links = [
   { label: "Home", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5 text-white " /> },
-  { label: "Rivalry", href: "/rivalry", icon: <Swords className="h-5 w-5 text-white " /> },
   { label: "Repositories", href: "/repositories", icon: <GitFork className="h-5 w-5 text-white dark:text-neutral-200" /> },
-  { label: "People", href: "/people", icon: <Activity className="h-5 w-5 text-white dark:text-neutral-200" /> },
+  { label: "Friends", href: "/rivalry", icon: <Users className="h-5 w-5 text-white " /> },
+  { label: "Notifications", href: "/people", icon: <Activity className="h-5 w-5 text-white dark:text-neutral-200" /> },
 ];
 
-export default function DashboardClient({ user, repositories = [], activities = [], rivalry = null, contributionDays = [], contributionTotal = 0, contributionYear = new Date().getFullYear() }) {
+export default function DashboardClient({ user, repositories = [], activities = [], rivalry = null, contributionDays = [], contributionTotal = 0, contributionYear = new Date().getFullYear(), friends = [] }) {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const [friendsOpen, setFriendsOpen] = useState(false);
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -37,6 +38,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
   const githubUsername = user?.githubUsername ?? session?.user?.githubUsername ?? "";
   const avatarUrl = user?.avatarUrl ?? session?.user?.image ?? null;
   const avatarInitial = displayName?.charAt(0) ?? "?";
+  const friendsExpanded = friendsOpen && sidebarOpen;
 
   function openGithubProfile() {
     if (!githubUsername) return;
@@ -57,9 +59,72 @@ export default function DashboardClient({ user, repositories = [], activities = 
               </SidebarText>
             </div>
             <div className="flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden py-2">
-              {links.map((link) => (
-                <SidebarLink key={link.href} link={link} />
-              ))}
+              {links.map((link) =>
+                link.label === "Friends" ? (
+                  <div
+                    key="friends"
+                    onMouseEnter={() => setFriendsOpen(true)}
+                    onMouseLeave={() => setFriendsOpen(false)}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setFriendsOpen((v) => !v)}
+                      className="flex w-full items-center justify-start gap-2 group/sidebar py-2"
+                    >
+                      {link.icon}
+                      <SidebarText className="text-sm text-white dark:text-neutral-200">
+                        Friends
+                      </SidebarText>
+                      <SidebarText>
+                        <ChevronDown
+                          className={`h-4 w-4 text-zinc-400 transition-transform duration-300 ${friendsExpanded ? "rotate-180" : ""}`}
+                        />
+                      </SidebarText>
+                    </button>
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${friendsExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="flex max-h-60 flex-col gap-1 overflow-y-auto py-1 [scrollbar-width:thin]">
+                      {friends.length === 0 ? (
+                        <p className="px-2 py-1 text-xs text-zinc-500">No mutual follows yet.</p>
+                      ) : (
+                        friends.map((f) => (
+                          <a
+                            key={f.login}
+                            href={`https://github.com/${f.login}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/10"
+                          >
+                            {f.avatarUrl ? (
+                              <Image
+                                src={f.avatarUrl}
+                                alt={f.login}
+                                width={28}
+                                height={28}
+                                className="rounded-full border border-white/10"
+                              />
+                            ) : (
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500/20">
+                                <span className="text-xs font-semibold text-indigo-400">
+                                  {f.login?.charAt(0) ?? "?"}
+                                </span>
+                              </div>
+                            )}
+                            <span className="truncate text-sm text-zinc-300">@{f.login}</span>
+                          </a>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+                  </div>
+                )
+                : (
+                  <SidebarLink key={link.href} link={link} />
+                )
+              )}
             </div>
             <div className="group relative">
               <div className="pointer-events-none absolute bottom-full left-0 z-30 mb-0.5 w-48 ml-5 translate-y-2 p-3 opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 ">

@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getRepoCommits, getUserContributionDays, getUserData } from "@/lib/github";
+import { getRepoCommits, getUserContributionDays, getUserData, syncUserFriends } from "@/lib/github";
 import DashboardClient from "./DashboardClient";
 
 // Cache the dashboard (incl. GitHub commit fetches) for 5 minutes
@@ -153,6 +153,22 @@ export default async function DashboardPage() {
     accessToken
   ).catch(() => ({ days: [], total: 0 }));
 
+  // Refresh mutual follows (friends): syncUserFriends rewrites the DB
+  // array with its own response and returns it for display. On failure it
+  // returns null (DB untouched) — then render last-known DB friends.
+  // Never blocks the dashboard.
+  let friendsDisplay = [];
+  try {
+    const mutuals = await syncUserFriends(githubUsername, 100, 5, accessToken);
+    const source =
+      mutuals !== null
+        ? mutuals.map((m) => ({ login: m.login, avatarUrl: m.avatar_url }))
+        : (dbUser.friends ?? []).map((login) => ({ login, avatarUrl: null }));
+    friendsDisplay = source;
+  } catch (e) {
+    console.error("Friends refresh failed (non-blocking):", e);
+  }
+
   const rivalry = dbRivalry
     ? {
         id: dbRivalry.id,
@@ -175,6 +191,7 @@ export default async function DashboardPage() {
       contributionDays={contributions.days}
       contributionTotal={contributions.total}
       contributionYear={currentYear}
+      friends={friendsDisplay}
     />
   );
 }
