@@ -3,10 +3,12 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { ExternalLink, Rocket } from "lucide-react";
 import { Navbar, NavBody, MobileNav, MobileNavHeader, MobileNavMenu, MobileNavToggle } from "@/components/ui/resizable-navbar";
 import CommitGrid from "@/components/ui/commit-grid";
 import { PixelPreloader } from "@/components/ui/pixel-preloader";
+import RivalClient from "./RivalClient";
 import { Blocks } from "loading-dev";
 
 const navItems = [
@@ -64,6 +66,7 @@ function RivalLoadingScreen({ onComplete }) {
 export default function RivalPage() {
   const pathname = usePathname();
   const router = useRouter();
+  const { data: session } = useSession();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [rivalry, setRivalry] = useState(null);
   const [rivalryChecked, setRivalryChecked] = useState(false);
@@ -259,7 +262,15 @@ export default function RivalPage() {
         </Navbar>
         <div className="h-[42px] w-full shrink-0 lg:h-[54px]" aria-hidden="true" />
 
-        <div>rival</div>
+        {rivalry && (
+          <div className="fixed top-1/2 left-1/2 z-40 mt-6 flex h-[82vh] w-[90vw] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/40 backdrop-blur-2xl">
+            <div className="rival-scroll min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+              <RivalClient rivalry={rivalry} youUsername={session?.user?.githubUsername ?? null} />
+            </div>
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-zinc-950/40 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-zinc-950/40 to-transparent" />
+          </div>
+        )}
       </div>
 
       {/* Verdict unknown — neutral spinner centered on the page, outside any box. */}
