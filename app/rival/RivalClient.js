@@ -2,35 +2,20 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ExternalLink, Flame } from "lucide-react";
+import { Clock, ExternalLink, Flame } from "lucide-react";
 import { ActivityHeatmap } from "@/components/ui/activity-heatmap";
 import { cn } from "@/lib/utils";
 
 /*
- * RivalClient — full-screen rivalry view for an ACTIVE rivalry.
+ * RivalClient — Minimalist Modern Glass rivalry view for an ACTIVE rivalry.
  *
- * Props:
- *   rivalry:     the `/api/rivalry/active` payload:
- *                { id, status, user1_score, user2_score, rivalry_score,
- *                  started_at, ends_at, user1_username, user2_username,
- *                  user1: { username, total_commits, current_streak,
- *                    longest_streak, following_count, starred_repo_count,
- *                    contributions: { days, total, year },
- *                    featured_repo: { name, full_name, language, github_url,
- *                      activity_count, last_activity_at } | null },
- *                  user2: { ... } }
- *   youUsername: viewer's GitHub login — shows the YOU badge. Optional.
+ * Preserves all stats parameters:
+ *   - rivalry.id, started_at, ends_at, scores & shares
+ *   - L & R user views: current_streak, longest_streak, total_commits,
+ *     contributions calendar (days, total, year), and featured_repo
+ *   - Head-to-head "Tale of the Tape" metrics
  *
- * Concept: fight card. Scoreboard hero with giant face-off numerals, a
- * tale-of-the-tape comparison table, then one dossier panel per user with
- * heatmap + most-active-repo spotlight.
- *
- * Sides: the viewer always renders on the LEFT, the rival on the right.
- * Tones: green = you, soft red = the enemy (zinc fallback if viewer unknown).
- *
- * TODOs:
- *   - swap letter medallions for real avatars (the API returns no avatar_urls yet)
- *   - per-activity/scoring breakdown (needs an activities-by-rivalry read)
+ * Sides: Viewer on the LEFT (emerald/green), rival on the RIGHT (rose/red).
  */
 
 const LANGUAGE_COLORS = {
@@ -54,34 +39,41 @@ const LANGUAGE_COLORS = {
 
 const TONE = {
   green: {
-    panel: "border-green-500/25",
-    accentBar: "bg-gradient-to-r from-green-500/70 to-green-500/0",
-    medallion: "bg-green-500/20 text-green-300",
-    ring: "ring-1 ring-green-500/40",
-    text: "text-green-300",
+    panel: "border-emerald-500/20 hover:border-emerald-500/35",
+    accentGradient: "from-emerald-500/60 via-emerald-500/20 to-transparent",
+    medallion: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+    ring: "ring-1 ring-emerald-500/40 ring-offset-2 ring-offset-zinc-950",
+    text: "text-emerald-400",
+    glow: "drop-shadow-[0_2px_14px_rgba(52,211,153,0.22)]",
+    badge: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+    pill: "bg-emerald-500",
   },
   red: {
-    panel: "border-red-400/20",
-    accentBar: "bg-gradient-to-r from-red-400/60 to-red-400/0",
-    medallion: "bg-red-400/15 text-red-300",
-    ring: "ring-1 ring-red-400/40",
-    text: "text-red-300",
+    panel: "border-rose-500/20 hover:border-rose-500/35",
+    accentGradient: "from-rose-500/60 via-rose-500/20 to-transparent",
+    medallion: "bg-rose-500/15 text-rose-300 border border-rose-500/30",
+    ring: "ring-1 ring-rose-500/40 ring-offset-2 ring-offset-zinc-950",
+    text: "text-rose-400",
+    glow: "drop-shadow-[0_2px_14px_rgba(251,113,133,0.22)]",
+    badge: "border-rose-500/30 bg-rose-500/10 text-rose-300",
+    pill: "bg-rose-500",
   },
   zinc: {
-    panel: "border-white/10",
-    accentBar: "bg-gradient-to-r from-zinc-600/70 to-zinc-600/0",
-    medallion: "bg-zinc-800 text-zinc-300",
-    ring: "ring-1 ring-white/15",
-    text: "text-zinc-500",
+    panel: "border-white/10 hover:border-white/20",
+    accentGradient: "from-zinc-500/40 via-zinc-500/10 to-transparent",
+    medallion: "bg-zinc-800/80 text-zinc-300 border border-white/10",
+    ring: "ring-1 ring-white/15 ring-offset-2 ring-offset-zinc-950",
+    text: "text-zinc-400",
+    glow: "",
+    badge: "border-white/10 bg-white/5 text-zinc-400",
+    pill: "bg-zinc-500",
   },
 };
 
-// Flat hexes for the merged duel-bar gradient (Tailwind classes can't paint a
-// mid-bar blend, so the stops go inline).
 const TONE_HEX = {
-  green: "#4ade80",
-  red: "#f87171",
-  zinc: "#52525b",
+  green: "#10b981",
+  red: "#f43f5e",
+  zinc: "#71717a",
 };
 
 function formatScore(n) {
@@ -116,44 +108,48 @@ function ProfileLink({ username, className }) {
       rel="noopener noreferrer"
       title={`Open @${username} on GitHub`}
       className={cn(
-        "group/link flex min-w-0 items-center gap-1 font-mono text-sm transition-colors hover:text-white hover:underline hover:decoration-white/40 hover:underline-offset-4",
+        "group/link inline-flex min-w-0 items-center gap-1.5 font-mono text-sm transition-colors hover:text-white",
         className
       )}
     >
       <span className="min-w-0 truncate">@{username}</span>
       <ExternalLink
-        className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover/link:opacity-70"
+        className="h-3 w-3 shrink-0 text-zinc-500 opacity-60 transition-all group-hover/link:translate-x-0.5 group-hover/link:opacity-100 group-hover/link:text-white"
         aria-hidden="true"
       />
     </a>
   );
 }
 
-const ANGLED = "[clip-path:polygon(0_0,calc(100%-10px)_0,100%_10px,100%_100%,0_100%)]";
-
-function UserAvatar({ username, avatarUrl, size = 40, tone = "zinc", textClass = "text-base", angled = false }) {
+function UserAvatar({ username, avatarUrl, size = 48, tone = "zinc", textClass = "text-base" }) {
   const [failed, setFailed] = useState(false);
   const t = TONE[tone] ?? TONE.zinc;
   const box = { width: size, height: size };
+
   if (!avatarUrl || failed) {
     return (
       <span
         aria-hidden="true"
-        className={cn("flex shrink-0 items-center justify-center font-bold", angled ? ANGLED : "rounded-full", textClass, t.medallion)}
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-xl font-mono font-bold tracking-tight shadow-md backdrop-blur-md",
+          textClass,
+          t.medallion
+        )}
         style={box}
       >
         {username.charAt(0).toUpperCase()}
       </span>
     );
   }
+
   return (
     <Image
       src={avatarUrl}
-      alt={`@${username}'s GitHub avatar`}
+      alt={`@${username}'s avatar`}
       width={size}
       height={size}
       onError={() => setFailed(true)}
-      className={cn("shrink-0 object-cover", angled ? ANGLED : "rounded-full", t.ring)}
+      className={cn("shrink-0 rounded-xl object-cover shadow-md transition-transform duration-300 hover:scale-105", t.ring)}
       style={box}
     />
   );
@@ -164,13 +160,15 @@ function StreakBadge({ count, hot }) {
     <span
       title={`Current streak: ${count} days`}
       className={cn(
-        "flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs tabular-nums",
-        hot ? "border-orange-400/30 bg-orange-400/10 text-orange-400" : "border-white/10 bg-black/40 text-zinc-500"
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs tabular-nums backdrop-blur-md transition-colors",
+        hot
+          ? "border-amber-400/30 bg-amber-400/10 text-amber-400 shadow-[0_0_12px_-2px_rgba(251,191,36,0.2)]"
+          : "border-white/[0.08] bg-zinc-900/60 text-zinc-400"
       )}
     >
-      <Flame className="h-3.5 w-3.5" aria-hidden="true" />
-      <span>{count}d</span>
-      <svg viewBox="0 0 28 16" className="h-4 w-7" aria-hidden="true" fill="none">
+      <Flame className={cn("h-3.5 w-3.5", hot ? "fill-amber-400/30 text-amber-400" : "text-zinc-500")} aria-hidden="true" />
+      <span className="font-semibold">{count}d</span>
+      <svg viewBox="0 0 28 16" className="h-3.5 w-6 opacity-75" aria-hidden="true" fill="none">
         {count > 0 ? (
           <path
             d="M1 13 C 8 13 9 11 11 7 C 13 3.5 15 3 27 3"
@@ -195,8 +193,8 @@ function StreakBadge({ count, hot }) {
 function FeaturedRepo({ repo }) {
   if (!repo) {
     return (
-      <div className="mt-2 flex items-center justify-center rounded-xl border border-dashed border-white/15 px-3 py-6 text-center text-sm text-zinc-500">
-        No tracked activity yet — push something to light this up.
+      <div className="mt-2.5 flex items-center justify-center rounded-xl border border-dashed border-white/10 bg-zinc-900/30 px-3 py-5 text-center text-xs font-mono text-zinc-500">
+        No tracked activity yet — push code to light this up.
       </div>
     );
   }
@@ -207,23 +205,32 @@ function FeaturedRepo({ repo }) {
       target="_blank"
       rel="noopener noreferrer"
       title={`Open ${repo.full_name} on GitHub`}
-      className="group/repo mt-2 flex items-center gap-3 rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2.5 transition-colors hover:border-white/25"
+      className="group/repo mt-2.5 flex items-center gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/40 p-3 backdrop-blur-md transition-all duration-300 hover:border-white/20 hover:bg-zinc-900/70 hover:shadow-lg"
     >
       <span
         aria-hidden="true"
-        className="h-2.5 w-2.5 shrink-0 rounded-full"
-        style={{ backgroundColor: LANGUAGE_COLORS[repo.language] ?? "#52525b" }}
+        className="h-2.5 w-2.5 shrink-0 rounded-full shadow-sm"
+        style={{
+          backgroundColor: LANGUAGE_COLORS[repo.language] ?? "#52525b",
+          boxShadow: `0 0 8px ${LANGUAGE_COLORS[repo.language] ?? "#52525b"}66`,
+        }}
       />
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate font-mono text-sm text-zinc-100">{repo.full_name}</span>
-        <span className="truncate text-xs text-zinc-500">
-          {[repo.language, `${repo.activity_count} ${repo.activity_count === 1 ? "activity" : "activities"} this rivalry`, ago ? `last ${ago}` : null]
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="truncate font-mono text-xs font-semibold text-zinc-100 group-hover/repo:text-white">
+          {repo.full_name}
+        </span>
+        <span className="truncate font-mono text-[11px] text-zinc-400">
+          {[
+            repo.language,
+            `${repo.activity_count} ${repo.activity_count === 1 ? "activity" : "activities"}`,
+            ago ? `last ${ago}` : null,
+          ]
             .filter(Boolean)
             .join(" · ")}
         </span>
       </span>
       <ExternalLink
-        className="h-3.5 w-3.5 shrink-0 text-zinc-600 transition-colors group-hover/repo:text-zinc-200"
+        className="h-3.5 w-3.5 shrink-0 text-zinc-500 transition-all duration-200 group-hover/repo:translate-x-0.5 group-hover/repo:text-zinc-200"
         aria-hidden="true"
       />
     </a>
@@ -233,16 +240,43 @@ function FeaturedRepo({ repo }) {
 function TapeRow({ label, a, b, aTone, bTone, suffix }) {
   const win = a === b ? 0 : a > b ? 1 : 2;
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-baseline border-t border-white/5 py-2.5">
-      <span className={cn("font-mono text-lg tabular-nums", win === 1 ? aTone.text : win === 0 ? "text-zinc-300" : "text-zinc-600")}>
-        {formatScore(a)}
-        {suffix && <span className="ml-0.5 text-xs">{suffix}</span>}
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center rounded-xl px-3 py-2.5 transition-colors hover:bg-white/[0.02]">
+      {/* Left side */}
+      <div className="flex items-center gap-2">
+        {win === 1 && (
+          <span className={cn("h-1.5 w-1.5 rounded-full shrink-0 shadow-sm", aTone.pill)} aria-hidden="true" />
+        )}
+        <span
+          className={cn(
+            "font-mono text-base sm:text-lg tabular-nums tracking-tight",
+            win === 1 ? cn("font-semibold", aTone.text) : win === 0 ? "text-zinc-300 font-medium" : "text-zinc-500 font-normal"
+          )}
+        >
+          {formatScore(a)}
+          {suffix && <span className="ml-0.5 text-xs font-normal text-zinc-500">{suffix}</span>}
+        </span>
+      </div>
+
+      {/* Center label */}
+      <span className="px-4 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-400">
+        {label}
       </span>
-      <span className="px-3 font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-500">{label}</span>
-      <span className={cn("text-right font-mono text-lg tabular-nums", win === 2 ? bTone.text : win === 0 ? "text-zinc-300" : "text-zinc-600")}>
-        {formatScore(b)}
-        {suffix && <span className="ml-0.5 text-xs">{suffix}</span>}
-      </span>
+
+      {/* Right side */}
+      <div className="flex items-center justify-end gap-2">
+        <span
+          className={cn(
+            "text-right font-mono text-base sm:text-lg tabular-nums tracking-tight",
+            win === 2 ? cn("font-semibold", bTone.text) : win === 0 ? "text-zinc-300 font-medium" : "text-zinc-500 font-normal"
+          )}
+        >
+          {formatScore(b)}
+          {suffix && <span className="ml-0.5 text-xs font-normal text-zinc-500">{suffix}</span>}
+        </span>
+        {win === 2 && (
+          <span className={cn("h-1.5 w-1.5 rounded-full shrink-0 shadow-sm", bTone.pill)} aria-hidden="true" />
+        )}
+      </div>
     </div>
   );
 }
@@ -253,47 +287,59 @@ function UserPanel({ view, score, isYou, tone }) {
   const days = view?.contributions?.days ?? [];
   const year = view?.contributions?.year ?? new Date().getFullYear();
   const total = view?.contributions?.total ?? 0;
+
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col rounded-2xl border bg-zinc-950/70 p-4 shadow-2xl shadow-black/40 backdrop-blur-2xl sm:p-5",
+        "relative flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-zinc-950/60 p-5 shadow-2xl backdrop-blur-2xl transition-all duration-300",
         t.panel
       )}
     >
-      <div className={cn("h-1 rounded-full", t.accentBar)} aria-hidden="true" />
-      {/* Identity */}
-      <div className="mt-3 flex items-center gap-3">
-        <UserAvatar
-          username={username}
-          avatarUrl={view?.avatar_url}
-          size={48}
-          tone={tone}
-          textClass="text-lg"
-          angled
-        />
-        <span className="flex min-w-0 flex-col gap-1">
-          <ProfileLink username={username} className="text-base text-zinc-100" />
-          <span className="flex flex-wrap items-center gap-1.5">
-            {isYou && (
-              <span className="rounded-full bg-white px-2 py-0.5 font-mono text-[10px] font-semibold text-black">
-                YOU
-              </span>
-            )}
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-              {formatScore(score)} pts
-            </span>
-          </span>
-        </span>
+      {/* Top ambient highlight gradient */}
+      <div className={cn("absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r", t.accentGradient)} aria-hidden="true" />
+
+      {/* User identity & stats header */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <UserAvatar
+            username={username}
+            avatarUrl={view?.avatar_url}
+            size={48}
+            tone={tone}
+            textClass="text-lg"
+          />
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <ProfileLink username={username} className="text-base font-semibold text-zinc-100" />
+              {isYou && (
+                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-400">
+                  YOU
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 font-mono text-xs text-zinc-400">
+              <span className={cn("font-medium", t.text)}>{formatScore(score)} pts</span>
+              <span>·</span>
+              <span>{view?.current_streak ?? 0}d streak</span>
+            </div>
+          </div>
+        </div>
+
+        <StreakBadge count={Number(view?.current_streak) || 0} hot={(Number(view?.current_streak) || 0) > 0} />
       </div>
 
-      {/* Heatmap */}
-      <div className="mt-4 rounded-xl border border-white/10 bg-black/40 p-2">
+      {/* Heatmap tray */}
+      <div className="mt-5 rounded-xl border border-white/[0.06] bg-black/40 p-3 shadow-inner">
+        <div className="mb-2 flex items-center justify-between px-1 font-mono text-[11px] text-zinc-400">
+          <span className="uppercase tracking-wider">Contributions · {year}</span>
+          <span className="text-zinc-300">{formatScore(total)} total</span>
+        </div>
         <ActivityHeatmap days={days} total={total} year={year} />
       </div>
 
       {/* Most active repo */}
-      <div className="mt-4">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+      <div className="mt-5">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-400">
           Most active repo · this rivalry
         </p>
         <FeaturedRepo repo={view?.featured_repo ?? null} />
@@ -329,6 +375,7 @@ export default function RivalClient({ rivalry, youUsername = null }) {
   const streakWin = streakL === streakR ? 0 : streakL > streakR ? 1 : 2;
   const year = L.view?.contributions?.year ?? new Date().getFullYear();
 
+  // Preserved stats parameters
   const tapeRows = [
     { label: "Rivalry score", a: L.score, b: R.score },
     { label: "Total commits", a: Number(L.view?.total_commits) || 0, b: Number(R.view?.total_commits) || 0 },
@@ -343,80 +390,145 @@ export default function RivalClient({ rivalry, youUsername = null }) {
   const shortId = String(rivalry.id ?? "").slice(0, 8).toUpperCase();
 
   return (
-    <section aria-label="Rivalry stats" className="flex w-full flex-col gap-4">
+    <section aria-label="Rivalry stats" className="flex w-full flex-col gap-5">
       {/* Scoreboard hero */}
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/70 shadow-2xl shadow-black/40 backdrop-blur-2xl">
-        <div className="flex items-center justify-between gap-2 border-b border-white/5 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-500 sm:px-5">
-          <span>Rivalry #{shortId}</span>
-          <span>{left !== null ? `${left}d left · ends ${endsLabel}` : "No end date"}</span>
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-950/70 shadow-2xl backdrop-blur-2xl">
+        {/* Subtle top edge glow */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" aria-hidden="true" />
+
+        {/* Header bar */}
+        <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-3 font-mono text-[11px] text-zinc-400">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            <span className="font-semibold uppercase tracking-widest text-zinc-300">Rivalry #{shortId}</span>
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-zinc-400">
+            <Clock className="h-3 w-3 text-zinc-400" aria-hidden="true" />
+            <span>{left !== null ? `${left}d remaining · Ends ${endsLabel}` : "Ongoing match"}</span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-6 sm:gap-4 sm:px-6">
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <ProfileLink username={L.username} className="text-base text-zinc-200 sm:text-lg" />
-            <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span className={cn("font-mono text-5xl font-bold tabular-nums sm:text-6xl lg:text-7xl", TONE[toneOf(L.side)].text)}>
+        {/* Duel numbers hero */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 py-8 sm:px-8">
+          {/* Left contestant (You) */}
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <ProfileLink username={L.username} className="text-base font-semibold text-zinc-200 sm:text-lg" />
+              {youSide === L.side && (
+                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-400">
+                  YOU
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+              <span
+                className={cn(
+                  "font-mono text-5xl font-extrabold tracking-tight tabular-nums sm:text-6xl lg:text-7xl",
+                  TONE[toneOf(L.side)].text,
+                  TONE[toneOf(L.side)].glow
+                )}
+              >
                 {formatScore(L.score)}
               </span>
               <StreakBadge count={streakL} hot={streakWin === 1} />
-            </span>
+            </div>
           </div>
-          <div className="flex flex-col items-center gap-2 px-1">
-            <span className="flex h-10 w-10 rotate-45 items-center justify-center border border-white/15 bg-zinc-900" aria-hidden="true">
-              <span className="-rotate-45 font-mono text-[10px] font-bold tracking-widest text-zinc-300">VS</span>
-            </span>
-            <p className="font-mono text-xl font-bold tabular-nums text-white sm:text-2xl">{formatScore(total)}</p>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">rivalry score</p>
+
+          {/* VS Center badge & total */}
+          <div className="flex flex-col items-center justify-center gap-1.5 px-2">
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-zinc-900/90 shadow-xl backdrop-blur-md">
+              <span className="font-mono text-xs font-bold tracking-widest text-zinc-200">VS</span>
+            </div>
+            <div className="mt-1 flex flex-col items-center">
+              <p className="font-mono text-xl font-bold tracking-tight tabular-nums text-white sm:text-2xl">
+                {formatScore(total)}
+              </p>
+              <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-zinc-400">
+                Rivalry score
+              </p>
+            </div>
           </div>
-          <div className="flex min-w-0 flex-col items-end gap-1.5 text-right">
-            <ProfileLink username={R.username} className="max-w-full justify-end text-base text-zinc-200 sm:text-lg" />
-            <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+
+          {/* Right contestant (Rival) */}
+          <div className="flex min-w-0 flex-col items-end gap-2 text-right">
+            <div className="flex items-center justify-end gap-2">
+              {youSide === R.side && (
+                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-400">
+                  YOU
+                </span>
+              )}
+              <ProfileLink username={R.username} className="max-w-full justify-end text-base font-semibold text-zinc-200 sm:text-lg" />
+            </div>
+            <div className="flex flex-wrap items-baseline justify-end gap-x-3 gap-y-2">
               <StreakBadge count={streakR} hot={streakWin === 2} />
-              <span className={cn("font-mono text-5xl font-bold tabular-nums sm:text-6xl lg:text-7xl", TONE[toneOf(R.side)].text)}>
+              <span
+                className={cn(
+                  "font-mono text-5xl font-extrabold tracking-tight tabular-nums sm:text-6xl lg:text-7xl",
+                  TONE[toneOf(R.side)].text,
+                  TONE[toneOf(R.side)].glow
+                )}
+              >
                 {formatScore(R.score)}
               </span>
-            </span>
+            </div>
           </div>
         </div>
 
-        <div className="px-4 pb-1 sm:px-6">
-          <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-zinc-800/80">
+        {/* Duel progress bar */}
+        <div className="px-5 pb-3 sm:px-8">
+          <div className="h-2 w-full overflow-hidden rounded-full border border-white/[0.06] bg-zinc-900/80 p-[1px]">
             <div
-              className="h-full w-full"
+              className="h-full w-full rounded-full transition-all duration-700"
               style={{
-                background: `linear-gradient(to right, ${TONE_HEX[toneOf(L.side)]} 0%, ${TONE_HEX[toneOf(L.side)]} ${Math.max(L.share - 8, 0)}%, ${TONE_HEX[toneOf(R.side)]} ${Math.min(L.share + 8, 100)}%, ${TONE_HEX[toneOf(R.side)]} 100%)`,
+                background: `linear-gradient(to right, ${TONE_HEX[toneOf(L.side)]} 0%, ${TONE_HEX[toneOf(L.side)]} ${Math.max(L.share - 6, 0)}%, ${TONE_HEX[toneOf(R.side)]} ${Math.min(L.share + 6, 100)}%, ${TONE_HEX[toneOf(R.side)]} 100%)`,
               }}
             />
           </div>
-          <div className="mt-1.5 flex items-center justify-between font-mono text-[11px] text-zinc-500">
-            <span className="truncate">
+          <div className="mt-2 flex items-center justify-between font-mono text-xs text-zinc-400">
+            <span className="truncate font-medium text-zinc-300">
               @{L.username} · {L.share.toFixed(0)}%
             </span>
-            <span className="truncate">
+            <span className="text-[11px] text-zinc-500 uppercase tracking-wider">
+              {formatScore(L.score)} : {formatScore(R.score)}
+            </span>
+            <span className="truncate font-medium text-zinc-300">
               {R.share.toFixed(0)}% · @{R.username}
             </span>
           </div>
         </div>
 
-        {/* Tale of the tape */}
-        <div className="mt-3 border-t border-white/5 px-4 pb-2 sm:px-6">
-          <p className="pt-3 font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-500">Tale of the tape</p>
-          {tapeRows.map((row) => (
-            <TapeRow
-              key={row.label}
-              label={row.label}
-              a={row.a}
-              b={row.b}
-              aTone={TONE[toneOf(L.side)]}
-              bTone={TONE[toneOf(R.side)]}
-              suffix={row.suffix}
-            />
-          ))}
+        {/* Tale of the Tape */}
+        <div className="mt-2 border-t border-white/[0.06] px-5 py-4 sm:px-8">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-400">
+              Tale of the tape
+            </p>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+              Head-to-head metrics
+            </span>
+          </div>
+          <div className="divide-y divide-white/[0.04]">
+            {tapeRows.map((row) => (
+              <TapeRow
+                key={row.label}
+                label={row.label}
+                a={row.a}
+                b={row.b}
+                aTone={TONE[toneOf(L.side)]}
+                bTone={TONE[toneOf(R.side)]}
+                suffix={row.suffix}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Dossiers */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+      {/* User Dossiers */}
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
         <UserPanel view={L.view} score={L.score} isYou={L.side === youSide} tone={toneOf(L.side)} />
         <UserPanel view={R.view} score={R.score} isYou={R.side === youSide} tone={toneOf(R.side)} />
       </div>

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUserContributionDays, getUserData } from "@/lib/github";
 import { refreshUserStats } from "@/lib/stats";
+import { updateRivalryScore } from "@/lib/rivalry";
 
 // Returns the session user's ACTIVE rivalry, or { rivalry: null }.
 // Both participants are enriched with personal stats, a year-wide
@@ -54,18 +55,19 @@ export async function GET() {
   // Viewer's OAuth token: own private contributions included; the rival's
   // calendar resolves to their public contributions. Never throws.
   const accessToken = session?.accessToken ?? null;
-  const [user1, user2] = await Promise.all([
+  const [user1, user2, updatedRivalry] = await Promise.all([
     buildUserView(rivalry.user1, rivalry.started_at, accessToken, year),
     buildUserView(rivalry.user2, rivalry.started_at, accessToken, year),
+    updateRivalryScore(rivalry.id).catch(() => null),
   ]);
 
   return NextResponse.json({
     rivalry: {
       id: rivalry.id,
       status: rivalry.status,
-      user1_score: rivalry.user1_score,
-      user2_score: rivalry.user2_score,
-      rivalry_score: rivalry.rivalry_score,
+      user1_score: updatedRivalry?.user1_score ?? rivalry.user1_score,
+      user2_score: updatedRivalry?.user2_score ?? rivalry.user2_score,
+      rivalry_score: updatedRivalry?.rivalry_score ?? rivalry.rivalry_score,
       started_at: rivalry.started_at?.toISOString() ?? null,
       ends_at: rivalry.ends_at?.toISOString() ?? null,
       user1_username: rivalry.user1.github_username,

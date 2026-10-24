@@ -39,8 +39,8 @@ export default function NotificationsPage() {
         <MobileNav>
           <MobileNavHeader>
             <button type="button" onClick={() => router.push("/dashboard")} className="flex items-center space-x-2">
-              <Rocket className="h-6 w-6 text-indigo-500" />
-              <span className="text-lg font-semibold text-indigo-500">Pushr</span>
+              <Rocket className="h-6 w-6 text-green-500" />
+              <span className="text-lg font-semibold text-green-500">Pushr</span>
             </button>
             <MobileNavToggle
               isOpen={isMobileMenuOpen}
