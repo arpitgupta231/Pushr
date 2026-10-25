@@ -66,8 +66,6 @@ Tauri may be considered later, but it is not part of V1.
 
 For V1, use GitHub's Events API with periodic polling.
 
-Do not over-engineer the first version with GitHub App webhooks unless explicitly decided later.
-
 The current proposed architecture is:
 
 ```text
@@ -353,14 +351,11 @@ Different concepts:
 ```text
 Git commit SHA
 GitHub Events API event ID
-Webhook delivery ID
 ```
 
 A commit SHA identifies the actual Git commit.
 
 An event ID identifies an API event.
-
-A webhook delivery ID identifies a webhook delivery.
 
 For V1, if only the Events API is used, the implementation can use the Events API event ID as the primary deduplication identifier.
 
@@ -473,7 +468,6 @@ Avoid allowing trivial activity to be exploited for excessive points.
 7. Avoid artificial developer rankings.
 8. Prioritize the "Grow with your BRO" experience over unnecessary gamification.
 9. Avoid premature optimization and unnecessary infrastructure.
-10. Keep the architecture extensible enough to add GitHub webhooks later.
 
 ## Product Identity
 

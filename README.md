@@ -23,13 +23,13 @@ A rivalry is intended to run for six months after both users accept. Completed r
 
 ## Activity syncing
 
-The activity polling handler is at `/api/cron/activities` and is intended to be called by a scheduled job such as Vercel Cron, with the configured `CRON_SECRET`. GitHub's Events API is delayed and has a limited event history, so activity updates are not real-time. The repository also contains an optional GitHub webhook handler at `/api/webhook/github`; Events API polling remains the lightweight V1 approach.
+The activity polling handler is at `/api/cron/activities` and is intended to be called by a scheduled job such as Vercel Cron, with the configured `CRON_SECRET`. GitHub's Events API is delayed and has a limited event history, so activity updates are not real-time. Events API polling is the V1 approach.
 
 ## Project structure
 
 ```text
 app/                 Pages, layouts, and API routes
-  api/               Auth, rivalry, activity, stats, and webhook handlers
+  api/               Auth, rivalry, activity, and stats handlers
   dashboard/         Main signed-in dashboard
   rival/             Rivalry view
 lib/                 GitHub integration, auth, stats, repos, and Prisma client
