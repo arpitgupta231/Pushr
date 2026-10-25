@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getRepoCommits, getUserContributionDays, getUserData, syncUserFriends } from "@/lib/github";
+import { getRepoCommits, getUserContributionDays, getUserData } from "@/lib/github";
 import DashboardClient from "./DashboardClient";
 
 // Cache the dashboard (incl. GitHub commit fetches) for 5 minutes
@@ -27,6 +27,8 @@ function toChartCommits(rawCommits) {
 
 // Server Component: verifies the session username against the DB,
 // then fetches all dashboard data directly from Postgres.
+// GitHub data syncing is handled exclusively by the cron job (lib/sync.js).
+// This page is read-only from PostgreSQL for stored user stats.
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
 
@@ -153,21 +155,12 @@ export default async function DashboardPage() {
     accessToken
   ).catch(() => ({ days: [], total: 0 }));
 
-  // Refresh mutual follows (friends): syncUserFriends rewrites the DB
-  // array with its own response and returns it for display. On failure it
-  // returns null (DB untouched) — then render last-known DB friends.
-  // Never blocks the dashboard.
-  let friendsDisplay = [];
-  try {
-    const mutuals = await syncUserFriends(githubUsername, 100, 5, accessToken);
-    const source =
-      mutuals !== null
-        ? mutuals.map((m) => ({ login: m.login, avatarUrl: m.avatar_url }))
-        : (dbUser.friends ?? []).map((login) => ({ login, avatarUrl: null }));
-    friendsDisplay = source;
-  } catch (e) {
-    console.error("Friends refresh failed (non-blocking):", e);
-  }
+  // Friends are read-only from the DB — the cron job (lib/sync.js)
+  // handles syncing mutual follows. No GitHub API calls here.
+  const friendsDisplay = (dbUser.friends ?? []).map((login) => ({
+    login,
+    avatarUrl: null,
+  }));
 
   const rivalry = dbRivalry
     ? {
