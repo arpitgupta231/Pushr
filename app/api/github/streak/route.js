@@ -2,7 +2,8 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { refreshUserStats } from "@/lib/stats";
+import { persistUserStats } from "@/lib/sync";
+import { computeUserStats } from "@/lib/stats";
 
 // GET /api/github/streak?username=<login>
 // GitHub activity streaks counted from the contribution calendar (same source
@@ -26,18 +27,19 @@ export async function GET(request) {
   const username = searchParams.get("username")?.trim() || viewer;
   const accessToken = session?.accessToken ?? null;
 
-  const refreshed = await refreshUserStats(username, accessToken);
-  if (refreshed) {
+  const fresh = await computeUserStats(username, accessToken);
+  if (fresh) {
+    const persisted = await persistUserStats(username, fresh);
     return NextResponse.json({
       username,
-      year: refreshed.year,
-      current_streak: refreshed.current_streak,
-      longest_streak: refreshed.longest_streak,
-      last_active_date: refreshed.last_active_date,
-      active_today: refreshed.active_today,
-      total_contributions: refreshed.total_commits,
-      total_contributions_all_time: refreshed.total_all_time,
-      persisted: refreshed.persisted,
+      year: fresh.year,
+      current_streak: fresh.current_streak,
+      longest_streak: fresh.longest_streak,
+      last_active_date: fresh.last_active_date,
+      active_today: fresh.active_today,
+      total_contributions: fresh.total_commits,
+      total_contributions_all_time: fresh.total_all_time,
+      persisted,
     });
   }
 

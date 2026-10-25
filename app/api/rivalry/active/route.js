@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUserContributionDays, getUserData } from "@/lib/github";
-import { refreshUserStats } from "@/lib/stats";
+import { persistUserStats } from "@/lib/sync";
+import { computeUserStats } from "@/lib/stats";
 import { updateRivalryScore } from "@/lib/rivalry";
 
 // Returns the session user's ACTIVE rivalry, or { rivalry: null }.
@@ -79,7 +80,7 @@ export async function GET() {
 }
 
 async function buildUserView(user, rivalryStartedAt, accessToken, year) {
-  const [topGroups, contributions, refreshed, profile] = await Promise.all([
+  const [topGroups, contributions, fresh, profile] = await Promise.all([
     prisma.activity
       .groupBy({
         by: ["repository_id"],
@@ -100,12 +101,15 @@ async function buildUserView(user, rivalryStartedAt, accessToken, year) {
       `${year}-12-31T23:59:59Z`,
       accessToken
     ).catch(() => ({ days: [], total: 0 })),
-    // Fresh GitHub stats, persisted to the DB row; falls back to the stored
-    // values below when GitHub is unreachable.
-    refreshUserStats(user.github_username, accessToken),
+    // Fresh GitHub stats — computed here; persisted right after collection
+    // through the sync layer's single coherent User update. Falls back to
+    // the stored values below when GitHub is unreachable.
+    computeUserStats(user.github_username, accessToken),
     // Profile for the avatar URL — null falls back to a letter medallion.
     getUserData(user.github_username, accessToken).catch(() => null),
   ]);
+
+  if (fresh) await persistUserStats(user.github_username, fresh);
 
   let featured_repo = null;
   const top = topGroups[0];
@@ -128,9 +132,9 @@ async function buildUserView(user, rivalryStartedAt, accessToken, year) {
   return {
     username: user.github_username,
     avatar_url: profile?.avatar_url ?? null,
-    total_commits: refreshed?.total_commits ?? user.total_commits,
-    current_streak: refreshed?.current_streak ?? user.current_streak,
-    longest_streak: refreshed?.longest_streak ?? user.longest_streak,
+    total_commits: fresh?.total_commits ?? user.total_commits,
+    current_streak: fresh?.current_streak ?? user.current_streak,
+    longest_streak: fresh?.longest_streak ?? user.longest_streak,
     following_count: user.following_count,
     starred_repo_count: user.starred_repo_count,
     contributions: { days: contributions.days, total: contributions.total, year },
