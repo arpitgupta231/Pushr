@@ -40,6 +40,8 @@ model User {
   // at render time from the fresh following response.
   friends           String[]   @default([])
 
+  last_synced_at    DateTime?
+
   created_at        DateTime   @default(now())
   updated_at        DateTime   @updatedAt
 
