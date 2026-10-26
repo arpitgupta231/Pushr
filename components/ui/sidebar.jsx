@@ -63,27 +63,30 @@ export const DesktopSidebar = ({
   const { open, setOpen, animate } = useSidebar();
   return (
     <>
-      <motion.div
-        initial={false}
-        className={cn(
-          "hidden md:flex md:flex-col md:my-4 md:ml-4 md:h-[calc(100svh-2rem)] md:rounded-2xl px-4 py-4 bg-zinc-950 border border-white/10 shadow-2xl shadow-black/40 w-[60px] shrink-0 relative",
-          className
-        )}
-        animate={{
-          width: animate ? (open ? "320px" : "60px") : "320px",
-        }}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        {...props}
-      >
-        <BorderBeam
-          size={open ? 140 : 40}
-          duration={8}
-          borderWidth={2}
-          borderRadius={16}
-        />
-        {children}
-      </motion.div>
+      <div className="relative z-30 hidden w-[60px] shrink-0 md:my-4 md:ml-4 md:block md:h-[calc(100svh-2rem)]">
+        <motion.div
+          initial={false}
+          className={cn(
+            "absolute inset-y-0 left-0 flex w-[60px] shrink-0 flex-col border border-white/10 bg-linear-to-b from-zinc-900/70 via-zinc-950/75 to-zinc-950/90 px-4 py-4 shadow-2xl shadow-black/50 ring-1 ring-inset ring-white/[0.03] backdrop-blur-xl md:rounded-2xl",
+            className
+          )}
+          animate={{
+            width: animate ? (open ? "280px" : "60px") : "280px",
+          }}
+          transition={{ duration: 0.2, ease: "easeIn" }}
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          {...props}
+        >
+          <BorderBeam
+            size={open ? 140 : 40}
+            duration={8}
+            borderWidth={2}
+            borderRadius={16}
+          />
+          {children}
+        </motion.div>
+      </div>
     </>
   );
 };
@@ -98,13 +101,13 @@ export const MobileSidebar = ({
     <>
       <div
         className={cn(
-          "h-10 px-4 py-4 flex flex-row md:hidden  items-center justify-between bg-zinc-950 w-full"
+          "flex h-12 w-full flex-row items-center justify-between border-b border-white/10 bg-zinc-950/80 px-4 backdrop-blur-xl md:hidden"
         )}
         {...props}
       >
-        <div className="flex justify-end z-20 w-full">
+        <div className="z-20 flex w-full justify-end">
           <IconMenu2
-            className="text-neutral-800 dark:text-neutral-200"
+            className="h-5 w-5 cursor-pointer text-zinc-400 transition-colors duration-200 ease-in hover:text-green-400"
             onClick={() => setOpen(!open)}
           />
         </div>
@@ -119,15 +122,15 @@ export const MobileSidebar = ({
                 ease: "easeInOut",
               }}
               className={cn(
-                "fixed h-full w-full inset-0 bg-white dark:bg-neutral-900 p-10 z-[100] flex flex-col justify-between",
+                "fixed inset-0 z-[100] flex h-full w-full flex-col justify-between border-white/10 bg-zinc-950/95 p-6 backdrop-blur-2xl",
                 className
               )}
             >
               <div
-                className="absolute right-10 top-10 z-50 text-neutral-800 dark:text-neutral-200"
+                className="absolute right-4 top-4 z-50 cursor-pointer rounded-lg p-2 text-zinc-400 transition-colors duration-200 ease-in hover:bg-white/5 hover:text-zinc-100"
                 onClick={() => setOpen(!open)}
               >
-                <IconX />
+                <IconX className="h-5 w-5" />
               </div>
               {children}
             </motion.div>
@@ -146,7 +149,7 @@ export const SidebarText = ({ children, className, ...props }) => {
         opacity: animate ? (open ? 1 : 0) : 1,
       }}
       className={cn(
-        "whitespace-pre inline-block !p-0 !m-0",
+        "whitespace-pre inline-block !p-0 !m-0 font-medium",
         className
       )}
       style={{
@@ -169,7 +172,8 @@ export const SidebarLink = ({
     <a
       href={link.href}
       className={cn(
-        "flex items-center justify-start gap-2  group/sidebar py-2",
+        "group/sidebar relative flex items-center rounded-xl text-sm font-medium text-zinc-400 transition-colors duration-200 ease-in hover:bg-white/[0.05] hover:text-zinc-100 active:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30 [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:shrink-0 [&>svg]:text-zinc-400 [&>svg]:transition-colors [&>svg]:duration-200 group-hover/sidebar:[&>svg]:text-green-400",
+        open ? "gap-3 px-3 py-2" : "justify-center px-2 py-2.5",
         className
       )}
       {...props}
@@ -182,7 +186,7 @@ export const SidebarLink = ({
           display: animate ? (open ? "inline-block" : "none") : "inline-block",
           opacity: animate ? (open ? 1 : 0) : 1,
         }}
-        className="text-white dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+        className="inline-block truncate"
       >
         {link.label}
       </motion.span>

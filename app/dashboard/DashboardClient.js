@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChevronDown, GitFork, LayoutDashboard, Rocket, Users } from "lucide-react";
-import { Sidebar, SidebarBody, SidebarLink, SidebarText } from "@/components/ui/sidebar";
+import { Sidebar, SidebarBody, SidebarLink, SidebarText, useSidebar } from "@/components/ui/sidebar";
 import { Navbar, NavBody, NavItems, MobileNav, MobileNavHeader, MobileNavMenu, MobileNavToggle } from "@/components/ui/resizable-navbar";
 import { WobbleCard } from "@/components/ui/wobble-card";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
@@ -26,18 +26,21 @@ const links = [
 ];
 
 function SidebarAccordion({ icon, label, expanded, onOpen, onClose, onToggle, children }) {
+  const { open } = useSidebar();
   return (
     <div onMouseEnter={onOpen} onMouseLeave={onClose}>
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full cursor-pointer items-center justify-start gap-2 group/sidebar py-2"
+        className={`group/sidebar flex w-full cursor-pointer items-center rounded-xl text-sm font-medium text-zinc-400 transition-colors duration-200 ease-in hover:bg-white/[0.05] hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30 [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:shrink-0 [&>svg]:text-zinc-400 [&>svg]:transition-colors [&>svg]:duration-200 group-hover/sidebar:[&>svg]:text-green-400 ${
+          open ? "gap-3 px-3 py-2" : "justify-center px-2 py-2.5"
+        }`}
       >
         {icon}
-        <SidebarText className="text-sm text-white dark:text-neutral-200">
+        <SidebarText className="text-sm">
           {label}
         </SidebarText>
-        <SidebarText>
+        <SidebarText className="ml-auto">
           <ChevronDown
             className={`h-4 w-4 text-zinc-400 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
           />
@@ -80,14 +83,36 @@ export default function DashboardClient({ user, repositories = [], activities = 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
 
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
-          <SidebarBody className="gap-6">
-            <div className="flex flex-row items-center gap-2 ">
-              <Rocket className="h-6 w-6 text-green-500" />
-              <SidebarText className="text-lg font-semibold text-green-500" >
-                Pushr
-              </SidebarText>
+          <SidebarBody className="gap-4">
+            <div
+              className={`relative flex h-12 items-center overflow-hidden ${
+                sidebarOpen ? "justify-start" : "justify-center"
+              }`}
+            >
+              <Image
+                src="/logo.png"
+                alt="Pushr"
+                width={1080}
+                height={1080}
+                sizes="120px"
+                aria-hidden={sidebarOpen}
+                className={`h-10 w-10 max-w-none shrink-0 transition-opacity duration-200 ease-in ${
+                  sidebarOpen ? "opacity-0" : "opacity-100"
+                }`}
+              />
+              <Image
+                src="/heading.png"
+                alt="Pushr"
+                width={2000}
+                height={1120}
+                sizes="160px"
+                aria-hidden={!sidebarOpen}
+                className={`absolute left-0 top-1/2 -ml-[18px] h-16 w-auto max-w-none -translate-y-1/2 transition-opacity duration-200 ease-in ${
+                  sidebarOpen ? "opacity-100" : "opacity-0"
+                }`}
+              />
             </div>
-            <div className="flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden py-2">
+            <div className="mt-1 flex flex-1 flex-col gap-1.5 overflow-y-auto overflow-x-hidden border-t border-white/[0.06] py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {links.map((link) => {
                 if (link.label === "Friends") {
                   return (
@@ -110,24 +135,24 @@ export default function DashboardClient({ user, repositories = [], activities = 
                               href={`https://github.com/${f.login}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/10"
+                              className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors duration-200 ease-in hover:bg-white/[0.05]"
                             >
                               {f.avatarUrl ? (
                                 <Image
                                   src={f.avatarUrl}
                                   alt={f.login}
-                                  width={28}
-                                  height={28}
+                                  width={24}
+                                  height={24}
                                   className="rounded-full border border-white/10"
                                 />
                               ) : (
-                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500/20">
-                                  <span className="text-xs font-semibold text-indigo-400">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500/10 ring-1 ring-green-500/20">
+                                  <span className="text-xs font-semibold text-green-400">
                                     {f.login?.charAt(0) ?? "?"}
                                   </span>
                                 </div>
                               )}
-                              <span className="truncate text-sm text-zinc-300">@{f.login}</span>
+                              <span className="truncate text-sm text-zinc-400 transition-colors duration-200 group-hover:text-zinc-200">@{f.login}</span>
                             </a>
                           ))
                         )}
@@ -150,7 +175,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
                       <button
                         type="button"
                         onClick={() => router.push("/notifications")}
-                        className="block w-full cursor-pointer px-2 py-1.5 text-left text-xs font-medium text-indigo-400 hover:text-indigo-300"
+                        className="block w-full cursor-pointer rounded-lg px-2 py-1.5 text-left text-xs font-medium text-green-400 transition-colors duration-200 ease-in hover:bg-white/[0.05] hover:text-green-300"
                       >
                         View all →
                       </button>
@@ -160,47 +185,47 @@ export default function DashboardClient({ user, repositories = [], activities = 
                 return <SidebarLink key={link.href} link={link} />;
               })}
             </div>
-            <div className="group relative">
-              <div className="pointer-events-none absolute bottom-full left-0 z-30 mb-0.5 w-48 ml-5 translate-y-2 p-3 opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 ">
-                <div className="rounded-xl border border-white bg-zinc-900 py-2 p-1.5 shadow-2xl shadow-black/40 ">
+            <div className="group relative mt-1 border-t border-white/[0.06] pt-3">
+              <div className="pointer-events-none absolute bottom-full left-0 z-30 mb-1 ml-5 w-48 translate-y-2 p-3 opacity-0 transition-all duration-200 ease-in group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
+                <div className="rounded-xl border border-white/10 bg-zinc-900/95 p-1.5 py-2 shadow-2xl shadow-black/50 backdrop-blur-xl">
                   <button
                     type="button"
                     onClick={openGithubProfile}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-300 transition-colors duration-200 ease-in hover:bg-white/[0.06] hover:text-zinc-100"
                   >
                     Open in GitHub
                   </button>
                   <button
                     type="button"
                     onClick={() => signOut({ callbackUrl: "/login" })}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-400 transition-colors duration-200 ease-in hover:bg-red-500/10 hover:text-red-300"
                   >
                     Log out
                   </button>
                 </div>
               </div>
-              <div className="flex flex-row items-center gap-2 cursor-pointer">
+              <div className={`flex cursor-pointer flex-row items-center gap-2.5 ${sidebarOpen ? "rounded-xl px-2 py-1.5 transition-colors duration-200 ease-in hover:bg-white/[0.05]" : "justify-center"}`}>
                 {avatarUrl ? (
                   <Image
                     src={avatarUrl}
                     alt={displayName}
                     width={32}
                     height={32}
-                    className="rounded-full border border-indigo-500/40"
+                    className="rounded-full border border-green-500/30 ring-1 ring-white/10"
                   />
                 ) : (
-                  <div className="flex px-3 -left-0.5 py-1.5 w-fit  items-center justify-center rounded-full bg-indigo-500/20">
-                    <span className="text-sm font-semibold text-indigo-400">{avatarInitial}</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10 ring-1 ring-green-500/20">
+                    <span className="text-sm font-semibold text-green-400">{avatarInitial}</span>
                   </div>
                 )}
-                <SidebarText className="text-sm text-white">
+                <SidebarText className="min-w-0 max-w-full truncate text-sm text-zinc-300">
                   {displayName}
                 </SidebarText>
               </div>
             </div>
           </SidebarBody>
         </Sidebar>
-        <div className={`relative flex h-full min-w-0 flex-1 flex-col items-center  mt-2 ${sidebarOpen ? "pl-6" : ":"}`}>
+        <div className="relative mt-2 flex h-full min-w-0 flex-1 flex-col items-center">
           <Navbar className="fixed left-1/2 top-2 z-40 w-fit -translate-x-1/2">
             <NavBody>
               <NavItems items={navItems} />
@@ -242,7 +267,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
           <div className="relative flex w-full items-end justify-center gap-6 p-6 pt-3">
 
             <WobbleCard
-              containerClassName={`w-md max-w-xl h-[85vh] self-end ${sidebarOpen ? "hidden" : ""}`}
+              containerClassName="w-md max-w-xl h-[85vh] self-end"
               className="p-0 sm:p-0"
             >
 
@@ -287,7 +312,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
                 </div>
               </div>
             </WobbleCard>
-            <div className={`flex w-[54vw] h-[85vh] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/80 p-6 shadow-2xl shadow-black/40 ${sidebarOpen ? "absolute right-6 top-3" : ""}`}>
+            <div className="flex w-[54vw] h-[85vh] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/80 p-6 shadow-2xl shadow-black/40">
               <p className="mb-4 font-sans text-sm font-semibold text-zinc-200">
                 Repositories
               </p>

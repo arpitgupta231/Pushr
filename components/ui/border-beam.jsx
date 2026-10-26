@@ -31,6 +31,8 @@ export const BorderBeam = ({
         style={{
           width: size,
           offsetPath: `rect(0 auto auto 0 round ${borderRadius ?? size}px)`,
+          offsetAnchor: "90% 50%",
+          offsetRotate: "auto",
           "--color-from": colorFrom,
           "--color-to": colorTo,
         }}
