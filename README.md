@@ -19,7 +19,7 @@ A rivalry is intended to run for six months after both users accept. Completed r
 - Next.js 16 with React 19
 - NextAuth with GitHub OAuth
 - PostgreSQL and Prisma
-- GitHub REST and GraphQL APIs
+- GitHub REST and Web Push APIs
 
 ## Activity syncing
 

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ExternalLink, Rocket } from "lucide-react";
-import { Navbar, NavBody, MobileNav, MobileNavHeader, MobileNavMenu, MobileNavToggle } from "@/components/ui/resizable-navbar";
+import { Navbar, NavBody, NavItems, MobileNav, MobileNavHeader, MobileNavMenu, MobileNavToggle } from "@/components/ui/resizable-navbar";
 import CommitGrid from "@/components/ui/commit-grid";
 import { PixelPreloader } from "@/components/ui/pixel-preloader";
 import RivalClient from "./RivalClient";
@@ -209,24 +209,9 @@ export default function RivalPage() {
       <CommitGrid className="pointer-events-none fixed inset-0 z-0 bg-zinc-950" />
       <div className="flex h-svh w-full flex-col ">
 
-        <Navbar className="fixed left-1/2 top-2 z-40 w-fit -translate-x-1/2 rounded-4xl border border-white/10 shadow-2xl shadow-black/40 backdrop-blur-4xl bg-zinc-800">
+        <Navbar className="fixed left-1/2 top-2 z-40 w-fit -translate-x-1/2">
           <NavBody>
-            <div className="hidden flex-1 flex-row items-center justify-center space-x-2 lg:flex">
-              {navItems.map((item) => {
-                const isActive = pathname === item.link;
-                return (
-                  <button
-                    key={item.link}
-                    type="button"
-                    onClick={() => router.push(item.link)}
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? "bg-white text-black" : "text-zinc-400 hover:text-white"
-                      }`}
-                  >
-                    {item.name}
-                  </button>
-                );
-              })}
-            </div>
+            <NavItems items={navItems} />
           </NavBody>
           <MobileNav>
             <MobileNavHeader>

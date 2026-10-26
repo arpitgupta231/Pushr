@@ -64,8 +64,9 @@ export const DesktopSidebar = ({
   return (
     <>
       <motion.div
+        initial={false}
         className={cn(
-          "hidden md:flex md:flex-col md:my-4 md:ml-4 md:h-[calc(100svh-2rem)] md:rounded-2xl px-4 py-4 bg-zinc-950 border border-white/10 shadow-2xl shadow-black/40 w-[320px] shrink-0 relative",
+          "hidden md:flex md:flex-col md:my-4 md:ml-4 md:h-[calc(100svh-2rem)] md:rounded-2xl px-4 py-4 bg-zinc-950 border border-white/10 shadow-2xl shadow-black/40 w-[60px] shrink-0 relative",
           className
         )}
         animate={{
@@ -80,8 +81,6 @@ export const DesktopSidebar = ({
           duration={8}
           borderWidth={2}
           borderRadius={16}
-          colorFrom="#AAFFFF"
-          colorTo="#FFAAFF"
         />
         {children}
       </motion.div>
@@ -178,6 +177,7 @@ export const SidebarLink = ({
       {link.icon}
 
       <motion.span
+        initial={false}
         animate={{
           display: animate ? (open ? "inline-block" : "none") : "inline-block",
           opacity: animate ? (open ? 1 : 0) : 1,

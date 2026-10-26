@@ -5,7 +5,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChevronDown, GitFork, LayoutDashboard, Rocket, Users } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink, SidebarText } from "@/components/ui/sidebar";
-import { Navbar, NavBody, MobileNav, MobileNavHeader, MobileNavMenu, MobileNavToggle } from "@/components/ui/resizable-navbar";
+import { Navbar, NavBody, NavItems, MobileNav, MobileNavHeader, MobileNavMenu, MobileNavToggle } from "@/components/ui/resizable-navbar";
 import { WobbleCard } from "@/components/ui/wobble-card";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import { Meteors } from "@/components/ui/meteors";
@@ -201,24 +201,9 @@ export default function DashboardClient({ user, repositories = [], activities = 
           </SidebarBody>
         </Sidebar>
         <div className={`relative flex h-full min-w-0 flex-1 flex-col items-center  mt-2 ${sidebarOpen ? "pl-6" : ":"}`}>
-          <Navbar className="fixed left-1/2 top-2 z-40 w-fit -translate-x-1/2 rounded-4xl border border-white/10 shadow-2xl shadow-black/40 backdrop-blur-4xl bg-zinc-800">
+          <Navbar className="fixed left-1/2 top-2 z-40 w-fit -translate-x-1/2">
             <NavBody>
-              <div className="hidden flex-1 flex-row items-center justify-center space-x-2 lg:flex">
-                {navItems.map((item) => {
-                  const isActive = pathname === item.link;
-                  return (
-                    <button
-                      key={item.link}
-                      type="button"
-                      onClick={() => router.push(item.link)}
-                      className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? "bg-white text-black" : "text-zinc-400 hover:text-white"
-                        }`}
-                    >
-                      {item.name}
-                    </button>
-                  );
-                })}
-              </div>
+              <NavItems items={navItems} />
             </NavBody>
             <MobileNav>
               <MobileNavHeader>
@@ -286,7 +271,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
                   <div className="flex self-stretch items-center">
                     <HoverBorderGradient
                       onClick={openGithubProfile}
-                      className="px-3 py-1 text-xs text-white bg-black transition-colors duration-500 hover:bg-white hover:text-black"
+                      className="px-3 py-1 text-xs"
                     >
                       Open in GitHub
                     </HoverBorderGradient>
@@ -321,7 +306,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
                         </p>
                         <HoverBorderGradient
                           onClick={() => window.open(repo.githubUrl, "_blank", "noopener,noreferrer")}
-                          className="text-xs text-white bg-black transition-colors duration-500 hover:bg-white hover:text-black"
+                          className="text-xs"
                         >
                           Open in GitHub
                         </HoverBorderGradient>

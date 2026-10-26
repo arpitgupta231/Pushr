@@ -7,6 +7,7 @@ import {
   useScroll,
   useMotionValueEvent,
 } from "motion/react";
+import { usePathname, useRouter } from "next/navigation";
 
 import React, { useRef, useState } from "react";
 
@@ -34,7 +35,10 @@ export const Navbar = ({
     <motion.div
       ref={ref}
       // IMPORTANT: Change this to class of `fixed` if you want the navbar to be fixed
-      className={cn("sticky inset-x-0 top-20 z-40 w-full", className)}
+      className={cn(
+        "sticky inset-x-0 top-20 z-40 w-full rounded-full border border-white/10 bg-zinc-900/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_10px_30px_-15px_rgba(0,0,0,0.9)] backdrop-blur-xl",
+        className,
+      )}
     >
       {React.Children.map(children, (child) =>
         React.isValidElement(child)
@@ -69,7 +73,7 @@ export const NavBody = ({
         damping: 50,
       }}
       className={cn(
-        "relative z-[60] mx-auto hidden w-full max-w-7xl flex-row items-center justify-between self-start rounded-full bg-transparent px-4 py-2 lg:flex dark:bg-transparent",
+        "relative z-[60] mx-auto hidden w-full max-w-7xl flex-row items-center justify-center self-start rounded-full bg-transparent p-1.5 lg:flex dark:bg-transparent",
         visible && "bg-white/80 dark:bg-neutral-950/80",
         className,
       )}
@@ -80,38 +84,69 @@ export const NavBody = ({
 };
 
 export const NavItems = ({
-  items,
+  items = [],
   className,
   onItemClick
 }) => {
+  const pathname = usePathname();
+  const router = useRouter();
   const [hovered, setHovered] = useState(null);
+  const [selected, setSelected] = useState(null);
+
+  const activeLink = selected ?? pathname;
+  const pillLink = hovered ?? activeLink;
 
   return (
-    <motion.div
+    <div
       onMouseLeave={() => setHovered(null)}
       className={cn(
-        "absolute inset-0 hidden flex-1 flex-row items-center justify-center space-x-2 text-sm font-medium text-zinc-600 transition duration-200 hover:text-zinc-800 lg:flex lg:space-x-2",
+        "hidden flex-1 flex-row items-center justify-center gap-1 lg:flex",
         className,
       )}
     >
-      {items.map((item, idx) => (
-        <a
-          onMouseEnter={() => setHovered(idx)}
-          onClick={onItemClick}
-          className="relative px-4 py-2 text-neutral-600 dark:text-neutral-300"
-          key={`link-${idx}`}
-          href={item.link}
-        >
-          {hovered === idx && (
-            <motion.div
-              layoutId="hovered"
-              className="absolute inset-0 h-full w-full rounded-full bg-gray-100 dark:bg-neutral-800"
-            />
-          )}
-          <span className="relative z-20">{item.name}</span>
-        </a>
-      ))}
-    </motion.div>
+      {items.map((item) => {
+        const isCurrentPage = pathname === item.link;
+        const showPill = pillLink === item.link;
+        const showIndicator = activeLink === item.link;
+
+        return (
+          <button
+            key={item.link}
+            type="button"
+            aria-current={isCurrentPage ? "page" : undefined}
+            onMouseEnter={() => setHovered(item.link)}
+            onClick={(event) => {
+              onItemClick?.(event, item);
+              setSelected(item.link);
+              router.push(item.link);
+            }}
+            className={cn(
+              "relative rounded-full px-7 py-2.5 text-sm transition-colors duration-200",
+              isCurrentPage
+                ? "font-semibold text-white"
+                : "font-medium text-zinc-400 hover:text-zinc-200",
+            )}
+          >
+            {showPill && (
+              <motion.span
+                layoutId="nav-pill"
+                transition={{ duration: 0.2, ease: "easeIn" }}
+                className="absolute inset-0 rounded-full bg-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-inset ring-white/[0.06]"
+              />
+            )}
+            <span className="relative z-10">{item.name}</span>
+            {showIndicator && (
+              <motion.span
+                layoutId="nav-indicator"
+                aria-hidden="true"
+                transition={{ duration: 0.2, ease: "easeIn" }}
+                className="pointer-events-none absolute -bottom-[6px] left-1/2 -ml-4 h-[3px] w-8 rounded-full bg-green-400 shadow-[0_0_10px_2px_rgba(74,222,128,0.75),0_0_22px_6px_rgba(34,197,94,0.35)]"
+              />
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 };
 
