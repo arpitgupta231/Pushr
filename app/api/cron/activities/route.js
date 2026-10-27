@@ -13,8 +13,9 @@ import { syncGeneralUserData } from "@/lib/sync";
  *      - Active-rivalry users: synced every 5 minutes
  *      - All other users: synced when last_synced_at is > 30 minutes old (or null)
  *      - Updates profile stats, commits, streaks, friends, following count, starred repos, repositories, last_synced_at
+ *      - Non-rival users also ingest GitHub Events here, stored with 0 points and never applied to rivalry scores
  *   2. syncAllUserActivities({ onlyActive: true }):
- *      - Polls GitHub Events API strictly for active-rivalry users
+ *      - Polls GitHub Events API strictly for active-rivalry users (5-minute cycle)
  *   3. updateAllRivalryScores():
  *      - Recalculates and updates scores for all active rivalries
  *
@@ -45,6 +46,10 @@ export async function GET(request) {
         activeUsersSynced: generalSync.activeCount,
         periodicUsersSynced: generalSync.periodicCount,
         totalUsersSynced: generalSync.totalSynced,
+        nonRivalActivitySync: {
+          usersSynced: generalSync.activityResults.length,
+          results: generalSync.activityResults,
+        },
       },
       activitySync: {
         usersSynced: activitySyncResults.length,

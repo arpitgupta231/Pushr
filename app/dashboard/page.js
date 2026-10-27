@@ -1,5 +1,4 @@
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getRepoCommits, getUserContributionDays, getUserData } from "@/lib/github";
@@ -31,24 +30,23 @@ function toChartCommits(rawCommits) {
 // This page is read-only from PostgreSQL for stored user stats.
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
-
-  // 1. Verify identity strictly through session info.
   const githubUsername = session?.user?.githubUsername?.trim() || null;
+
   if (!githubUsername) {
-    redirect("/login");
+    return null;
   }
 
-  // 2. Verify that username exists in our DB. No email fallback —
+  // Verify that the username exists in our DB. No email fallback —
   // the session username is the single source of truth.
   const dbUser = await prisma.user.findUnique({
     where: { github_username: githubUsername },
   });
 
   if (!dbUser) {
-    redirect("/login");
+    return null;
   }
 
-  // 3. Fetch everything for this verified user directly from the DB,
+  // Fetch everything for this verified user directly from the DB,
   // plus the GitHub avatar + bio for the sidebar / profile card.
   const [dbRepos, dbActivities, dbRivalry, githubProfile] = await Promise.all([
     prisma.repository.findMany({
