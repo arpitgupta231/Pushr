@@ -53,9 +53,9 @@ export async function GET() {
   }
 
   const year = new Date().getFullYear();
-  // Viewer's OAuth token: own private contributions included; the rival's
-  // calendar resolves to their public contributions. Never throws.
-  const accessToken = session?.accessToken ?? null;
+  // Viewer's stored OAuth token: own private contributions included; the
+  // rival's calendar resolves to their public contributions. Never throws.
+  const accessToken = dbUser.github_access_token ?? null;
   const [user1, user2, updatedRivalry] = await Promise.all([
     buildUserView(rivalry.user1, rivalry.started_at, accessToken, year),
     buildUserView(rivalry.user2, rivalry.started_at, accessToken, year),

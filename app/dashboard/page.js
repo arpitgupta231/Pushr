@@ -144,10 +144,10 @@ export default async function DashboardPage() {
   }));
 
   // Year-wide contribution calendar via GraphQL for the profile heatmap.
-  // Uses the viewer's OAuth token (private contribs included); falls back
-  // to GITHUB_TOKEN inside the fetcher. Never blocks the dashboard.
+  // Uses the stored server-side OAuth token (private contribs included);
+  // falls back to GITHUB_TOKEN inside the fetcher. Never blocks the dashboard.
   const currentYear = new Date().getFullYear();
-  const accessToken = session?.accessToken ?? null;
+  const accessToken = dbUser.github_access_token ?? null;
   const contributions = await getUserContributionDays(
     githubUsername,
     `${currentYear}-01-01T00:00:00Z`,

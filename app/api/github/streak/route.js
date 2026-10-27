@@ -25,7 +25,12 @@ export async function GET(request) {
 
   const { searchParams } = new URL(request.url);
   const username = searchParams.get("username")?.trim() || viewer;
-  const accessToken = session?.accessToken ?? null;
+  const viewerRow = await prisma.user.findUnique({
+    where: { github_username: viewer },
+    select: { github_access_token: true },
+  });
+  const accessToken =
+    username === viewer ? (viewerRow?.github_access_token ?? null) : null;
 
   const fresh = await computeUserStats(username, accessToken);
   if (fresh) {
