@@ -165,15 +165,24 @@ export const SidebarText = ({ children, className, ...props }) => {
 export const SidebarLink = ({
   link,
   className,
+  active = false,
+  itemRef,
   ...props
 }) => {
   const { open, animate } = useSidebar();
   return (
     <a
+      ref={itemRef}
       href={link.href}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "group/sidebar relative flex items-center rounded-xl text-sm font-medium text-zinc-400 transition-colors duration-200 ease-in hover:bg-white/[0.05] hover:text-zinc-100 active:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30 [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:shrink-0 [&>svg]:text-zinc-400 [&>svg]:transition-colors [&>svg]:duration-200 group-hover/sidebar:[&>svg]:text-green-400",
-        open ? "gap-3 px-3 py-2" : "justify-center px-2 py-2.5",
+        "group/sidebar relative z-10 flex items-center rounded-xl text-sm font-medium transition-colors duration-200 ease-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30 [&>svg]:relative [&>svg]:z-10 [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:shrink-0 [&>svg]:transition-colors [&>svg]:duration-200",
+        active
+          ? open
+            ? "text-green-100 [&>svg]:text-green-400"
+            : "[&>svg]:text-green-400 [&>svg]:drop-shadow-[0_0_6px_rgba(74,222,128,0.9)]"
+          : "text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-100 active:bg-white/[0.07] [&>svg]:text-zinc-400 group-hover/sidebar:[&>svg]:text-green-400",
+        open ? "gap-3 px-3 py-2" : "justify-center p-3",
         className
       )}
       {...props}
