@@ -1,33 +1,18 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getRepoCommits, getUserContributionDays, getUserData } from "@/lib/github";
+import { getUserContributionDays, getUserData } from "@/lib/github";
+import { toChartCommits } from "@/lib/commits";
 import DashboardClient from "./DashboardClient";
 
-// Cache the dashboard (incl. GitHub commit fetches) for 5 minutes
-// so every page load doesn't burn through the Events/commits rate limit.
+// Cache the dashboard for 5 minutes. Commit charts are read from PostgreSQL
+// (Repository.commits), so this does not fetch commit history from GitHub.
 export const revalidate = 300;
-
-// Shape a raw GET /repos/{owner}/{repo}/commits entry into what
-// ChartContainer expects: { sha, message, date, branch }.
-// The commits endpoint carries no branch info, so everything maps to
-// "main" for V1 (single-lane graph). Reversed to oldest → newest so the
-// graph reads left-to-right.
-function toChartCommits(rawCommits) {
-  return [...rawCommits]
-    .reverse()
-    .map((c) => ({
-      sha: c.sha?.slice(0, 7) ?? "unknown",
-      message: c.commit?.message?.split("\n")[0]?.slice(0, 80) || "commit",
-      date: c.commit?.author?.date?.slice(0, 10) ?? "",
-      branch: "main",
-    }));
-}
 
 // Server Component: verifies the session username against the DB,
 // then fetches all dashboard data directly from Postgres.
-// GitHub data syncing is handled exclusively by the cron job (lib/sync.js).
-// This page is read-only from PostgreSQL for stored user stats.
+// GitHub syncing is handled by the cron job (lib/sync.js) plus the one-time
+// repository history import at sign-in. Commit charts never call GitHub.
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   const githubUsername = session?.user?.githubUsername?.trim() || null;
@@ -61,6 +46,7 @@ export default async function DashboardPage() {
         is_fork: true,
         github_url: true,
         github_created_at: true,
+        commits: true,
       },
     }),
     prisma.activity.findMany({
@@ -108,30 +94,15 @@ export default async function DashboardPage() {
     longest_streak: dbUser.longest_streak,
   };
 
-  // Fetch commit history from GitHub for each repo, then hand the shaped
-  // commits to the client → ChartContainer. Failures resolve to [] so one
-  // private/empty/rate-limited repo never breaks the whole dashboard.
-  const commitResults = await Promise.allSettled(
-    dbRepos.map((repo) => {
-      const [owner, repoName] = (repo.full_name || "").split("/");
-      if (!owner || !repoName) return Promise.resolve([]);
-      return getRepoCommits(owner, repoName, 30);
-    })
-  );
-
-  const repositories = dbRepos.map((repo, i) => {
-    const settled = commitResults[i];
-    const raw = settled.status === "fulfilled" ? settled.value : [];
-    return {
-      name: repo.name,
-      fullName: repo.full_name,
-      description: repo.description,
-      language: repo.language,
-      isFork: repo.is_fork,
-      githubUrl: repo.github_url,
-      commits: toChartCommits(raw),
-    };
-  });
+  const repositories = dbRepos.map((repo) => ({
+    name: repo.name,
+    fullName: repo.full_name,
+    description: repo.description,
+    language: repo.language,
+    isFork: repo.is_fork,
+    githubUrl: repo.github_url,
+    commits: toChartCommits(repo.commits),
+  }));
 
   const activities = dbActivities.map((a) => ({
     id: a.id,

@@ -16,8 +16,13 @@ import { syncGeneralUserData } from "@/lib/sync";
  *      - Non-rival users also ingest GitHub Events here, stored with 0 points and never applied to rivalry scores
  *   2. syncAllUserActivities({ onlyActive: true }):
  *      - Polls GitHub Events API strictly for active-rivalry users (5-minute cycle)
+ *      - PushEvents append new commits to Repository.commits (SHA-deduped)
  *   3. updateAllRivalryScores():
  *      - Recalculates and updates scores for all active rivalries
+ *
+ * Historical repository commit history is imported once at sign-in, never
+ * by this cron. Non-rival users get the same PushEvent commit appends during
+ * their 30-minute sync in syncGeneralUserData().
  *
  * Protected with CRON_SECRET if configured.
  */
