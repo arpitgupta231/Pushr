@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Rocket } from "lucide-react";
 import { Navbar, NavBody, NavItems, MobileNav, MobileNavHeader, MobileNavMenu, MobileNavToggle } from "@/components/ui/resizable-navbar";
@@ -14,6 +14,14 @@ export default function NotificationsPage() {
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    fetch("/api/notifications")
+      .then((response) => response.ok ? response.json() : { notifications: [] })
+      .then((data) => setNotifications(data.notifications ?? []))
+      .catch(() => setNotifications([]));
+  }, []);
 
   return (
     <div className="flex h-svh w-full flex-col dark:bg-zinc-950">
@@ -61,7 +69,25 @@ export default function NotificationsPage() {
             Notifications
           </p>
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden items-center justify-center py-2 ">
-            <p className=" text-zinc-500 text-md ">No notifications yet.</p>
+            {notifications.length === 0 ? (
+              <p className="text-md text-zinc-500">No notifications yet.</p>
+            ) : notifications.map((notification) => (
+              <button
+                key={notification.id}
+                type="button"
+                onClick={async () => {
+                  if (!notification.read_at) {
+                    await fetch("/api/notifications", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: notification.id }) });
+                  }
+                  router.push(notification.href || "/rival");
+                }}
+                className={`w-full max-w-2xl rounded-xl border p-4 text-left transition-colors ${notification.read_at ? "border-white/5 bg-zinc-900/40" : "border-green-500/20 bg-green-500/5 hover:bg-green-500/10"}`}
+              >
+                <p className="text-sm font-semibold text-zinc-100">{notification.title}</p>
+                <p className="mt-1 text-sm text-zinc-400">{notification.body}</p>
+                <time className="mt-2 block text-xs text-zinc-600">{new Date(notification.created_at).toLocaleString()}</time>
+              </button>
+            ))}
           </div>
         </div>
       </div>

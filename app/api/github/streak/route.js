@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { persistUserStats } from "@/lib/sync";
 import { computeUserStats } from "@/lib/stats";
+import { getGitHubAccessToken } from "@/lib/github-token";
 
 // GET /api/github/streak?username=<login>
 // GitHub activity streaks counted from the contribution calendar (same source
@@ -27,10 +28,10 @@ export async function GET(request) {
   const username = searchParams.get("username")?.trim() || viewer;
   const viewerRow = await prisma.user.findUnique({
     where: { github_username: viewer },
-    select: { github_access_token: true },
+    select: { id: true, github_access_token: true },
   });
   const accessToken =
-    username === viewer ? (viewerRow?.github_access_token ?? null) : null;
+    username === viewer && viewerRow ? await getGitHubAccessToken(viewerRow.id).catch(() => viewerRow.github_access_token ?? null) : null;
 
   const fresh = await computeUserStats(username, accessToken);
   if (fresh) {

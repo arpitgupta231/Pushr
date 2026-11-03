@@ -6,6 +6,7 @@ import { getUserContributionDays, getUserData } from "@/lib/github";
 import { persistUserStats } from "@/lib/sync";
 import { computeUserStats } from "@/lib/stats";
 import { updateRivalryScore } from "@/lib/rivalry";
+import { getGitHubAccessToken } from "@/lib/github-token";
 
 // Returns the session user's ACTIVE rivalry, or { rivalry: null }.
 // Both participants are enriched with personal stats, a year-wide
@@ -55,7 +56,7 @@ export async function GET() {
   const year = new Date().getFullYear();
   // Viewer's stored OAuth token: own private contributions included; the
   // rival's calendar resolves to their public contributions. Never throws.
-  const accessToken = dbUser.github_access_token ?? null;
+  const accessToken = await getGitHubAccessToken(dbUser.id).catch(() => dbUser.github_access_token ?? null);
   const [user1, user2, updatedRivalry] = await Promise.all([
     buildUserView(rivalry.user1, rivalry.started_at, accessToken, year),
     buildUserView(rivalry.user2, rivalry.started_at, accessToken, year),

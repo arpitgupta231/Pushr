@@ -1,9 +1,10 @@
-import { getServerSession } from "next-auth";
+﻿import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUserContributionDays, getUserData } from "@/lib/github";
 import { toChartCommits } from "@/lib/commits";
 import DashboardClient from "./DashboardClient";
+import { getGitHubAccessToken } from "@/lib/github-token";
 
 // Cache the dashboard for 5 minutes. Commit charts are read from PostgreSQL
 // (Repository.commits), so this does not fetch commit history from GitHub.
@@ -11,7 +12,7 @@ export const revalidate = 300;
 
 // Server Component: verifies the session username against the DB,
 // then fetches all dashboard data directly from Postgres.
-// GitHub syncing is handled by the cron job (lib/sync.js) plus the one-time
+// GitHub syncing is handled by the sign-in setup and explicit refresh paths plus the one-time
 // repository history import at sign-in. Commit charts never call GitHub.
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -21,7 +22,7 @@ export default async function DashboardPage() {
     return null;
   }
 
-  // Verify that the username exists in our DB. No email fallback —
+  // Verify that the username exists in our DB. No email fallback â€”
   // the session username is the single source of truth.
   const dbUser = await prisma.user.findUnique({
     where: { github_username: githubUsername },
@@ -36,16 +37,20 @@ export default async function DashboardPage() {
   const [dbRepos, dbActivities, dbRivalry, githubProfile] = await Promise.all([
     prisma.repository.findMany({
       where: { user_id: dbUser.github_username },
-      orderBy: { github_created_at: "desc" },
-      take: 20,
+      orderBy: [{ pushed_at: "desc" }, { github_created_at: "desc" }],
       select: {
         name: true,
         full_name: true,
         description: true,
         language: true,
         is_fork: true,
+        is_contributor: true,
         github_url: true,
         github_created_at: true,
+        archived: true,
+        default_branch: true,
+        private: true,
+        pushed_at: true,
         commits: true,
       },
     }),
@@ -71,7 +76,7 @@ export default async function DashboardPage() {
         user2: { select: { github_username: true } },
       },
     }),
-    // GitHub profile for the avatar + bio. Never blocks the dashboard —
+    // GitHub profile for the avatar + bio. Never blocks the dashboard â€”
     // avatar falls back to the session image, then to the local placeholder.
     getUserData(githubUsername)
       .then((d) => ({
@@ -100,7 +105,12 @@ export default async function DashboardPage() {
     description: repo.description,
     language: repo.language,
     isFork: repo.is_fork,
+    isContributor: repo.is_contributor,
     githubUrl: repo.github_url,
+    private: repo.private,
+    archived: repo.archived,
+    defaultBranch: repo.default_branch,
+    pushedAt: repo.pushed_at?.toISOString() ?? null,
     commits: toChartCommits(repo.commits),
   }));
 
@@ -116,7 +126,7 @@ export default async function DashboardPage() {
   // Uses the stored server-side OAuth token (private contribs included);
   // falls back to GITHUB_TOKEN inside the fetcher. Never blocks the dashboard.
   const currentYear = new Date().getFullYear();
-  const accessToken = dbUser.github_access_token ?? null;
+  const accessToken = await getGitHubAccessToken(dbUser.id).catch(() => dbUser.github_access_token ?? null);
   const contributions = await getUserContributionDays(
     githubUsername,
     `${currentYear}-01-01T00:00:00Z`,
@@ -124,7 +134,7 @@ export default async function DashboardPage() {
     accessToken
   ).catch(() => ({ days: [], total: 0 }));
 
-  // Friends are read-only from the DB — the cron job (lib/sync.js)
+  // Friends are read-only from the DB â€” the sign-in setup and explicit refresh paths
   // handles syncing mutual follows. No GitHub API calls here.
   const friendsDisplay = (dbUser.friends ?? []).map((login) => ({
     login,
@@ -154,6 +164,7 @@ export default async function DashboardPage() {
       contributionTotal={contributions.total}
       contributionYear={currentYear}
       friends={friendsDisplay}
+      needsGitHubAppAuthorization={!dbUser.github_access_token}
     />
   );
 }

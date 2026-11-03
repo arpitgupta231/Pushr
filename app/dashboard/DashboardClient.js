@@ -141,7 +141,7 @@ function ProfileSettings({ githubUsername, signOut }) {
   );
 }
 
-export default function DashboardClient({ user, repositories = [], activities = [], rivalry = null, contributionDays = [], contributionTotal = 0, contributionYear = new Date().getFullYear(), friends = [] }) {
+export default function DashboardClient({ user, repositories = [], activities = [], rivalry = null, contributionDays = [], contributionTotal = 0, contributionYear = new Date().getFullYear(), friends = [], needsGitHubAppAuthorization = false }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [friendsOpen, setFriendsOpen] = useState(false);
@@ -149,6 +149,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showGitHubAppPrompt, setShowGitHubAppPrompt] = useState(needsGitHubAppAuthorization);
   const [activeItem, setActiveItem] = useState(() => {
     if (pathname.startsWith("/repositories")) return "Repositories";
     if (pathname.startsWith("/notifications")) return "Notifications";
@@ -213,6 +214,20 @@ export default function DashboardClient({ user, repositories = [], activities = 
 
   return (
     <div className="flex h-svh w-full flex-col dark:bg-zinc-950">
+
+      {showGitHubAppPrompt && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" aria-labelledby="github-app-prompt-title" className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-6 shadow-2xl shadow-black/50">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-green-400">One more step</p>
+            <h2 id="github-app-prompt-title" className="mt-2 text-xl font-semibold text-white">Sync your GitHub repositories</h2>
+            <p className="mt-3 text-sm leading-6 text-zinc-400">Connect the Pushr GitHub App to sync your repositories, commit history, and activity. You’ll choose which repositories the App can access on GitHub.</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setShowGitHubAppPrompt(false)} className="rounded-lg px-4 py-2 text-sm text-zinc-400 hover:bg-white/5 hover:text-white">Maybe later</button>
+              <a href="/api/github/start-installation" className="rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-colors hover:bg-green-400">Connect GitHub App</a>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
 
@@ -480,16 +495,22 @@ export default function DashboardClient({ user, repositories = [], activities = 
               </p>
               <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden items-center py-2 ">
                 {repositories.length === 0 ? (
-                  <p className="text-sm text-zinc-500">No repositories synced yet.</p>
+                  <div className="flex max-w-sm flex-col items-center gap-3 py-10 text-center">
+                    <p className="text-sm text-zinc-400">No repositories are saved yet.</p>
+                    <p className="text-xs text-zinc-600">Authorize the Pushr GitHub App to sync repositories you have granted it access to.</p>
+                    <a href="/api/github/start-installation" className="rounded-md border border-green-500/40 px-3 py-2 text-xs font-medium text-green-300 hover:bg-green-500/10">
+                      Connect GitHub App
+                    </a>
+                  </div>
                 ) : (
                   repositories.map((repo) => (
                     <div
-                      key={repo.name}
+                      key={repo.fullName}
                       className="h-fit shrink-0 hover:scale-105  w-[95%] border border-green-500/40 bg-zinc-900/60 p-3 shadow-lg shadow-green-950/20 transition-all duration-300 cursor-pointer rounded-sm"
                     >
                       <div className="mb-2 flex items-center justify-between gap-4 rounded-lg">
                         <p className="text-2xl font-semibold text-zinc-200">
-                          {repo.name}
+                          {repo.fullName}
                         </p>
                         <HoverBorderGradient
                           onClick={() => window.open(repo.githubUrl, "_blank", "noopener,noreferrer")}
@@ -498,6 +519,14 @@ export default function DashboardClient({ user, repositories = [], activities = 
                           Open in GitHub
                         </HoverBorderGradient>
                       </div >
+                      <div className="mb-2 flex flex-wrap gap-2 text-[11px] text-zinc-500">
+                        {repo.language && <span>{repo.language}</span>}
+                        {repo.isContributor && <span>Contributor</span>}
+                        {repo.private && <span>Private</span>}
+                        {repo.archived && <span>Archived</span>}
+                        {repo.defaultBranch && <span>Default: {repo.defaultBranch}</span>}
+                        {repo.description && <span className="basis-full">{repo.description}</span>}
+                      </div>
                       <div className="rounded-lg border border-zinc-800 p-1.5">
                         <ContributionGraph commits={repo.commits} className="h-fit w-full rounded-lg border border-green-500" />
                       </div>

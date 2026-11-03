@@ -1,4 +1,4 @@
-# Pushr
+﻿# Pushr
 
 **Grow with your BRO.**
 
@@ -6,11 +6,11 @@ Pushr is a web app for developers who want to build alongside a friend and keep 
 
 ## What Pushr does
 
-- Sign in with GitHub OAuth.
+- Sign in using GitHub App user authorization.
 - Sync GitHub profile stats, repositories, contribution history, streaks, and mutual follows.
 - Send and respond to rivalry requests, then view an active rivalry and its scores.
 - Store GitHub activity events and derived user and rivalry data in PostgreSQL.
-- Poll the GitHub Events API from a scheduled activity route for lightweight activity syncing.
+- Receive activity and repository updates through signed GitHub App webhooks.
 
 A rivalry is intended to run for six months after both users accept. Completed rivalries are retained as history. Scoring rules are still evolving, so activity points should not be treated as a finalized ranking system.
 
@@ -23,7 +23,7 @@ A rivalry is intended to run for six months after both users accept. Completed r
 
 ## Activity syncing
 
-The activity polling handler is at `/api/cron/activities` and is intended to be called by a scheduled job such as Vercel Cron, with the configured `CRON_SECRET`. GitHub's Events API is delayed and has a limited event history, so activity updates are not real-time. Events API polling is the V1 approach.
+Set `GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET` for regular GitHub OAuth login, then set `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_CLIENT_SECRET` (the legacy `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` names are accepted as fallbacks), plus `GITHUB_WEBHOOK_SECRET`, and `NEXT_PUBLIC_GITHUB_APP_SLUG` for the GitHub App authorization and webhooks. Configure regular OAuth callback to `${NEXTAUTH_URL}/api/auth/callback/github-oauth`, GitHub App OAuth callback to `${NEXTAUTH_URL}/api/auth/callback/github-app`, GitHub App Setup URL to `${NEXTAUTH_URL}/api/github/installation`, and webhook URL to `${NEXTAUTH_URL}/api/github/webhook`. Subscribe to `push`, `pull_request`, `pull_request_review`, `issues`, `star`, `fork`, `create`, and `repository` events. No scheduled activity polling is used.
 
 ## Project structure
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import BeamLoader from '@/components/ui/beam-loader'
 
@@ -20,9 +20,18 @@ function GitHubIcon({ className }) {
 export default function LoginPage() {
     const [loading, setLoading] = useState(false)
 
+    useEffect(() => {
+        if (new URLSearchParams(window.location.search).get('authorize') === 'app') {
+            // Strip the handoff flag first so React Strict Mode cannot start
+            // two OAuth requests during development.
+            window.history.replaceState({}, '', window.location.pathname)
+            signIn('github-app', { callbackUrl: `${window.location.origin}/api/github/finish-app-authorization` })
+        }
+    }, [])
+
     const handleSignIn = () => {
         setLoading(true)
-        signIn('github', { callbackUrl: '/dashboard' })
+        signIn('github-oauth', { callbackUrl: '/dashboard' })
     }
 
     if (loading) {
