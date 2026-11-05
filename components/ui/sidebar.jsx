@@ -1,6 +1,6 @@
 "use client";
 import { cn } from "@/lib/utils";
-import React, { useState, createContext, useContext } from "react";
+import React, { useState, createContext, useContext, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { IconMenu2, IconX } from "@tabler/icons-react";
 import { BorderBeam } from "@/components/ui/border-beam";
@@ -21,13 +21,20 @@ export const SidebarProvider = ({
   setOpen: setOpenProp,
   animate = true
 }) => {
-  const [openState, setOpenState] = useState(false);
+  const [stateOpen, setStateOpen] = useState(false);
+  const [revealed, setRevealed] = useState(() => Boolean(openProp) && animate);
 
-  const open = openProp !== undefined ? openProp : openState;
-  const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
+  const open = openProp !== undefined ? openProp : stateOpen;
+  const setOpen = setOpenProp !== undefined ? setOpenProp : setStateOpen;
+
+  useEffect(() => {
+    const delay = open && animate ? 80 : 0;
+    const timeout = setTimeout(() => setRevealed(Boolean(open && animate)), delay);
+    return () => clearTimeout(timeout);
+  }, [open, animate]);
 
   return (
-    <SidebarContext.Provider value={{ open, setOpen, animate: animate }}>
+    <SidebarContext.Provider value={{ open, setOpen, animate, revealed }}>
       {children}
     </SidebarContext.Provider>
   );
@@ -47,10 +54,11 @@ export const Sidebar = ({
 };
 
 export const SidebarBody = (props) => {
+  const { onMouseEnter, onMouseLeave, ...rest } = props;
   return (
     <>
-      <DesktopSidebar {...props} />
-      <MobileSidebar {...(props)} />
+      <DesktopSidebar {...rest} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+      <MobileSidebar {...rest} />
     </>
   );
 };
@@ -73,7 +81,7 @@ export const DesktopSidebar = ({
           animate={{
             width: animate ? (open ? "280px" : "60px") : "280px",
           }}
-          transition={{ duration: 0.2, ease: "easeIn" }}
+          transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.8 }}
           onMouseEnter={() => setOpen(true)}
           onMouseLeave={() => setOpen(false)}
           {...props}
@@ -142,23 +150,28 @@ export const MobileSidebar = ({
 };
 
 export const SidebarText = ({ children, className, ...props }) => {
-  const { open, animate } = useSidebar();
+  const { open, animate, revealed } = useSidebar();
+  const shown = animate ? revealed : true;
   return (
-    <motion.span
-      animate={{
-        opacity: animate ? (open ? 1 : 0) : 1,
-      }}
-      className={cn(
-        "whitespace-pre inline-block !p-0 !m-0 font-medium",
-        className
+    <AnimatePresence initial={false}>
+      {shown && (
+        <motion.span
+          key="text"
+          initial={{ opacity: 0, x: -4 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -4 }}
+          transition={{ duration: 0.16, ease: "easeOut" }}
+          className={cn(
+            "whitespace-pre inline-block min-w-0 !p-0 !m-0 font-medium",
+            className
+          )}
+          aria-hidden={!open}
+          {...props}
+        >
+          {children}
+        </motion.span>
       )}
-      style={{
-        display: animate ? (open ? "inline-block" : "none") : "inline-block",
-      }}
-      {...props}
-    >
-      {children}
-    </motion.span>
+    </AnimatePresence>
   );
 };
 
@@ -169,14 +182,15 @@ export const SidebarLink = ({
   itemRef,
   ...props
 }) => {
-  const { open, animate } = useSidebar();
+  const { open, animate, revealed } = useSidebar();
+  const labelShown = animate ? revealed : true;
   return (
     <a
       ref={itemRef}
       href={link.href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "group/sidebar relative z-10 flex items-center rounded-xl text-sm font-medium transition-colors duration-200 ease-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30 [&>svg]:relative [&>svg]:z-10 [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:shrink-0 [&>svg]:transition-colors [&>svg]:duration-200",
+        "group/sidebar relative z-10 flex items-center rounded-xl text-sm font-medium transition-colors duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30 [&>svg]:relative [&>svg]:z-10 [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:shrink-0 [&>svg]:transition-colors [&>svg]:duration-300",
         active
           ? open
             ? "text-green-100 [&>svg]:text-green-400"
@@ -189,16 +203,21 @@ export const SidebarLink = ({
     >
       {link.icon}
 
-      <motion.span
-        initial={false}
-        animate={{
-          display: animate ? (open ? "inline-block" : "none") : "inline-block",
-          opacity: animate ? (open ? 1 : 0) : 1,
-        }}
-        className="inline-block truncate"
-      >
-        {link.label}
-      </motion.span>
+      <AnimatePresence initial={false}>
+        {labelShown && (
+          <motion.span
+            key="label"
+            initial={{ opacity: 0, x: -4 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -4 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            className="inline-block min-w-0 truncate"
+            aria-hidden={!open}
+          >
+            {link.label}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </a>
   );
 };

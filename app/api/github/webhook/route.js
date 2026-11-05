@@ -18,6 +18,33 @@ function validSignature(raw, signature) {
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
+function logDelivery({ delivery, event, payload, decision, reason, userId }) {
+  const summary = {
+    delivery,
+    event,
+    action: payload?.action ?? null,
+    actor: payload?.sender?.login ?? null,
+    repo: payload?.repository?.full_name ?? null,
+    decision,
+    ...(reason ? { reason } : {}),
+    ...(userId ? { userId } : {}),
+  };
+  console.log(`[github/webhook] ${JSON.stringify(summary)}`);
+}
+
+// Map a webhook to the Pushr user that should own the activity:
+// the sender first, then the repository owner. Returns the full user row or
+// null when neither login has a Pushr account.
+async function resolveActorUser(payload, actorLogin) {
+  const candidates = [actorLogin, payload?.repository?.owner?.login]
+    .filter((login) => typeof login === "string" && login.length > 0);
+  for (const login of [...new Set(candidates)]) {
+    const user = await prisma.user.findUnique({ where: { github_username: login } });
+    if (user) return user;
+  }
+  return null;
+}
+
 function toActivity(event, payload, delivery) {
   const action = payload.action ?? "";
   let type;
@@ -44,7 +71,7 @@ function toActivity(event, payload, delivery) {
     actor, type,
     id: `${delivery}:${event}:${action || "event"}`,
     createdAt: eventDate && !Number.isNaN(new Date(eventDate).getTime()) ? new Date(eventDate) : new Date(),
-    metadata: { githubType: event, action: event === "pull_request_review" ? "review" : action, repo: payload.repository, commitCount: commits.length, commits, merged: payload.pull_request?.merged === true, title: payload.pull_request?.title ?? payload.issue?.title ?? null, reviewState: payload.review?.state ?? null },
+    metadata: { githubType: event, action: event === "pull_request_review" ? "review" : action, actor, repo: payload.repository, commitCount: commits.length, commits, merged: payload.pull_request?.merged === true, title: payload.pull_request?.title ?? payload.issue?.title ?? null, reviewState: payload.review?.state ?? null },
     commits,
   };
 }
@@ -81,9 +108,19 @@ export async function POST(request) {
   }
 
   const activity = toActivity(event, payload, delivery);
-  if (!activity) return NextResponse.json({ ok: true, ignored: true });
-  const user = await prisma.user.findUnique({ where: { github_username: activity.actor } });
-  if (!user) return NextResponse.json({ ok: true, ignored: true });
+  if (!activity) {
+    logDelivery({ delivery, event, payload, decision: "ignored", reason: "unsupported-event" });
+    return NextResponse.json({ ok: true, ignored: true, reason: "unsupported-event" });
+  }
+
+  // Attribute the event to a Pushr user. The GitHub sender wins, but when a
+  // non-Pushr collaborator/owner acts we fall back to the repository owner so
+  // the activity is still recorded against the account that connected GitHub.
+  const user = await resolveActorUser(payload, activity.actor);
+  if (!user) {
+    logDelivery({ delivery, event, payload, decision: "ignored", reason: "no-pushr-user" });
+    return NextResponse.json({ ok: true, ignored: true, reason: "no-pushr-user" });
+  }
   if (activity.type === "PUSH") {
     const [owner, repoName] = String(repository?.full_name ?? "").split("/");
     const accessToken = await getGitHubAccessToken(user.id).catch(() => null);
@@ -99,10 +136,10 @@ export async function POST(request) {
     activity.commits = ownCommits;
     activity.metadata.commits = ownCommits;
     activity.metadata.commitCount = ownCommits.length;
-    const ownRepositoryId = await findRepositoryId(Number(repository?.id), activity.actor);
+    const ownRepositoryId = await findRepositoryId(Number(repository?.id), user.github_username);
     if (ownRepositoryId) await appendRepositoryCommits(ownRepositoryId, ownCommits);
   }
-  const repositoryId = Number(repository?.id) > 0 ? await findRepositoryId(Number(repository.id), activity.actor) : null;
+  const repositoryId = Number(repository?.id) > 0 ? await findRepositoryId(Number(repository.id), user.github_username) : null;
   const points = getActivityPoints(activity.type, activity.metadata);
   let storedActivity;
   try {
@@ -112,8 +149,12 @@ export async function POST(request) {
       created_at: activity.createdAt,
     } });
   } catch (error) {
-    if (error?.code === "P2002") return NextResponse.json({ ok: true, duplicate: true });
+    if (error?.code === "P2002") {
+      logDelivery({ delivery, event, payload, decision: "duplicate", reason: "github_event_id", userId: user.id });
+      return NextResponse.json({ ok: true, duplicate: true });
+    }
     console.error("[github/webhook] activity write failed", error);
+    logDelivery({ delivery, event, payload, decision: "error", reason: "activity-write", userId: user.id });
     return NextResponse.json({ error: "Activity processing failed" }, { status: 500 });
   }
 
@@ -132,5 +173,6 @@ export async function POST(request) {
       repositoryName: repository?.full_name ?? repository?.name,
     });
   }
+  logDelivery({ delivery, event, payload, decision: "stored", userId: user.id });
   return NextResponse.json({ ok: true, stored: true, scored: Boolean(rivalry) });
 }

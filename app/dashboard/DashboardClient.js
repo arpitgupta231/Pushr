@@ -26,7 +26,7 @@ const links = [
 ];
 
 function SidebarAccordion({ icon, label, expanded, active = false, itemRef, onOpen, onClose, onToggle, children }) {
-  const { open } = useSidebar();
+  const { open, revealed } = useSidebar();
   return (
     <div onMouseEnter={onOpen} onMouseLeave={onClose}>
       <button
@@ -34,7 +34,7 @@ function SidebarAccordion({ icon, label, expanded, active = false, itemRef, onOp
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
-        className={`group/sidebar relative z-10 flex w-full cursor-pointer items-center rounded-xl text-sm font-medium transition-colors duration-200 ease-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30 [&>svg]:relative [&>svg]:z-10 [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:shrink-0 [&>svg]:transition-colors [&>svg]:duration-200 ${
+        className={`group/sidebar relative z-10 flex w-full cursor-pointer items-center rounded-xl text-sm font-medium transition-colors duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30 [&>svg]:relative [&>svg]:z-10 [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:shrink-0 [&>svg]:transition-colors [&>svg]:duration-300 ${
           active
             ? open
               ? "text-green-100 [&>svg]:text-green-400"
@@ -46,17 +46,36 @@ function SidebarAccordion({ icon, label, expanded, active = false, itemRef, onOp
         <SidebarText className="text-sm">
           {label}
         </SidebarText>
-        <SidebarText className="ml-auto">
-          <ChevronDown
-            className={`h-4 w-4 transition-transform duration-300 ${active ? "text-green-400" : "text-zinc-400"} ${expanded ? "rotate-180" : ""}`}
-          />
-        </SidebarText>
+        <AnimatePresence initial={false}>
+          {revealed && (
+            <motion.span
+              key="chevron"
+              initial={{ opacity: 0, x: -4 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -4 }}
+              transition={{ duration: 0.16, ease: "easeOut" }}
+              className="ml-auto inline-block shrink-0"
+              aria-hidden={!open}
+            >
+              <ChevronDown
+                className={`h-4 w-4 transition-transform duration-300 ease-out ${active ? "text-green-400" : "text-zinc-400"} ${expanded ? "rotate-180" : ""}`}
+              />
+            </motion.span>
+          )}
+        </AnimatePresence>
       </button>
-      <div
-        className={`grid transition-all duration-300 ease-in-out ${expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+      <motion.div
+        initial={false}
+        animate={{
+          height: expanded ? "auto" : 0,
+          opacity: expanded ? 1 : 0,
+        }}
+        transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+        className="overflow-hidden"
+        aria-hidden={!expanded}
       >
-        <div className="overflow-hidden">{children}</div>
-      </div>
+        {children}
+      </motion.div>
     </div>
   );
 }
@@ -149,6 +168,8 @@ export default function DashboardClient({ user, repositories = [], activities = 
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarMounted, setSidebarMounted] = useState(false);
+  const hoverTimeoutRef = useRef(null);
   const [showGitHubAppPrompt, setShowGitHubAppPrompt] = useState(needsGitHubAppAuthorization);
   const [activeItem, setActiveItem] = useState(() => {
     if (pathname.startsWith("/repositories")) return "Repositories";
@@ -181,7 +202,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
         height: itemRect.height,
       };
       setActiveRect((prev) =>
-        prev && prev.top === nextRect.top && prev.height === nextRect.height ? prev : nextRect
+        prev && Math.abs(prev.top - nextRect.top) < 0.5 && Math.abs(prev.height - nextRect.height) < 0.5 ? prev : nextRect
       );
     };
 
@@ -189,8 +210,28 @@ export default function DashboardClient({ user, repositories = [], activities = 
     const observer = new ResizeObserver(update);
     const item = itemRefs.current[activeItem];
     if (item) observer.observe(item);
+    observer.observe(nav);
     return () => observer.disconnect();
   }, [activeItem, sidebarOpen, friendsOpen, notificationsOpen]);
+
+  useEffect(() => {
+    if (sidebarOpen) return;
+    const timeout = setTimeout(() => setSidebarMounted(false), 320);
+    return () => clearTimeout(timeout);
+  }, [sidebarOpen]);
+
+  useEffect(() => () => clearTimeout(hoverTimeoutRef.current), []);
+
+  function handleSidebarEnter() {
+    clearTimeout(hoverTimeoutRef.current);
+    setSidebarMounted(true);
+    setSidebarOpen(true);
+  }
+
+  function handleSidebarLeave() {
+    clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => setSidebarOpen(false), 90);
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -269,7 +310,11 @@ export default function DashboardClient({ user, repositories = [], activities = 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
 
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
-          <SidebarBody className="gap-4">
+          <SidebarBody
+            className="gap-4"
+            onMouseEnter={handleSidebarEnter}
+            onMouseLeave={handleSidebarLeave}
+          >
             <div
               className={`relative flex h-12 items-center overflow-hidden ${
                 sidebarOpen ? "justify-start" : "justify-center"
@@ -282,7 +327,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
                 height={1080}
                 sizes="120px"
                 aria-hidden={sidebarOpen}
-                className={`h-10 w-10 max-w-none shrink-0 transition-opacity duration-200 ease-in ${
+                className={`h-10 w-10 max-w-none shrink-0 transition-opacity duration-150 ${
                   sidebarOpen ? "opacity-0" : "opacity-100"
                 }`}
               />
@@ -293,7 +338,7 @@ export default function DashboardClient({ user, repositories = [], activities = 
                 height={1120}
                 sizes="160px"
                 aria-hidden={!sidebarOpen}
-                className={`absolute left-0 top-1/2 -ml-[18px] h-16 w-auto max-w-none -translate-y-1/2 transition-opacity duration-200 ease-in ${
+                className={`absolute left-0 top-1/2 -ml-[18px] h-16 w-auto max-w-none -translate-y-1/2 transition-opacity duration-200 delay-100 ease-out ${
                   sidebarOpen ? "opacity-100" : "opacity-0"
                 }`}
               />
@@ -302,17 +347,21 @@ export default function DashboardClient({ user, repositories = [], activities = 
               ref={setNavRef}
               className="relative mt-1 flex flex-1 flex-col gap-1.5 overflow-y-auto overflow-x-hidden border-t border-white/[0.06] py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              {sidebarOpen && (
+              {sidebarMounted && (
                 <motion.div
                   aria-hidden="true"
                   initial={false}
                   animate={{
                     top: activeRect?.top ?? 0,
                     height: activeRect?.height ?? 0,
-                    opacity: activeRect ? 1 : 0,
+                    opacity: activeRect && sidebarOpen ? 1 : 0,
                   }}
-                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                  className="pointer-events-none absolute inset-x-0 z-0 rounded-xl border border-green-500/15 bg-green-500/[0.08] shadow-[inset_0_1px_0_rgba(74,222,128,0.06)]"
+                  transition={{
+                    top: { type: "spring", stiffness: 500, damping: 42, mass: 0.7 },
+                    height: { type: "spring", stiffness: 500, damping: 42, mass: 0.7 },
+                    opacity: { duration: 0.16, ease: "easeOut" },
+                  }}
+                  className="pointer-events-none absolute inset-x-0 z-0 rounded-xl border border-green-500/15 bg-green-500/[0.08] shadow-[inset_0_1px_0_rgba(74,222,128,0.06)] will-change-transform"
                 >
                   <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.85)]" />
                 </motion.div>

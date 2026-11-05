@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { completeExpiredRivalries } from "@/lib/rivalry";
 
 // accept | decline (recipient only) or cancel (requester only).
 // Accept locks the 6-month rivalry: started_at = now, ends_at = +6 months.
@@ -82,6 +83,10 @@ export async function POST(req) {
 
   // Accept: re-check the one-active-rivalry rule inside a transaction,
   // then lock in the 6-month match.
+  // Sweep finished matches first so an expired one is never treated as
+  // "already active" (which would wrongly block the accept).
+  await completeExpiredRivalries().catch(() => 0);
+
   const result = await prisma.$transaction(async (tx) => {
     const ids = [rivalry.user1_id, rivalry.user2_id];
     const active = await tx.rivalry.findFirst({

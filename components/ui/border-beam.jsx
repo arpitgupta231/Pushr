@@ -30,6 +30,7 @@ export const BorderBeam = ({
         )}
         style={{
           width: size,
+          transition: "width 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
           offsetPath: `rect(0 auto auto 0 round ${borderRadius ?? size}px)`,
           offsetAnchor: "90% 50%",
           offsetRotate: "auto",

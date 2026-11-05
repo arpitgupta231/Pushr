@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "Pushr -  Grow w/ Your Bro",
   description: "Grow with your bro. Competitive coding rivalry built on GitHub activity.",
+  manifest: "/manifest.webmanifest",
 };
 
 export default function RootLayout({ children }) {

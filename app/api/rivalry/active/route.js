@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserContributionDays, getUserData } from "@/lib/github";
 import { persistUserStats } from "@/lib/sync";
 import { computeUserStats } from "@/lib/stats";
-import { updateRivalryScore } from "@/lib/rivalry";
+import { completeExpiredRivalries, updateRivalryScore } from "@/lib/rivalry";
 import { getGitHubAccessToken } from "@/lib/github-token";
 
 // Returns the session user's ACTIVE rivalry, or { rivalry: null }.
@@ -27,6 +27,10 @@ export async function GET() {
   if (!dbUser) {
     return NextResponse.json({ rivalry: null }, { status: 404 });
   }
+
+  // Close out finished matches first so an expired rivalry never shows
+  // as ACTIVE (and never resets its finished scores to 0).
+  await completeExpiredRivalries().catch(() => 0);
 
   const userSelect = {
     id: true,

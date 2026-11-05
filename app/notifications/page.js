@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Rocket } from "lucide-react";
+import { Rocket, Bell, BellOff, Loader2 } from "lucide-react";
 import { Navbar, NavBody, NavItems, MobileNav, MobileNavHeader, MobileNavMenu, MobileNavToggle } from "@/components/ui/resizable-navbar";
+import { isPushSupported, getPushPermissionState, subscribeToPush, unsubscribeFromPush } from "@/lib/push-client";
 
 const navItems = [
   { name: "Dashboard", link: "/dashboard" },
@@ -15,6 +16,9 @@ export default function NotificationsPage() {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [pushPermission, setPushPermission] = useState(null);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
 
   useEffect(() => {
     fetch("/api/notifications")
@@ -22,6 +26,51 @@ export default function NotificationsPage() {
       .then((data) => setNotifications(data.notifications ?? []))
       .catch(() => setNotifications([]));
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function detectPushState() {
+      if (!isPushSupported()) {
+        if (!cancelled) setPushPermission("unsupported");
+        return;
+      }
+      const permission = await getPushPermissionState();
+      if (cancelled) return;
+      setPushPermission(permission);
+      try {
+        const registration = await navigator.serviceWorker.getRegistration("/sw.js");
+        const subscription = registration ? await registration.pushManager.getSubscription() : null;
+        if (!cancelled) setPushSubscribed(Boolean(subscription));
+      } catch {
+        if (!cancelled) setPushSubscribed(false);
+      }
+    }
+    detectPushState();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleEnablePush = async () => {
+    setPushBusy(true);
+    const result = await subscribeToPush();
+    if (result.ok) {
+      setPushSubscribed(true);
+      setPushPermission("granted");
+    } else if (result.reason === "denied") {
+      setPushPermission("denied");
+    } else if (result.reason === "unsupported") {
+      setPushPermission("unsupported");
+    }
+    setPushBusy(false);
+  };
+
+  const handleDisablePush = async () => {
+    setPushBusy(true);
+    await unsubscribeFromPush();
+    setPushSubscribed(false);
+    setPushBusy(false);
+  };
 
   return (
     <div className="flex h-svh w-full flex-col dark:bg-zinc-950">
@@ -65,9 +114,52 @@ export default function NotificationsPage() {
 
       <div className="flex w-full flex-1 items-start justify-center p-6 pt-3">
         <div className="flex w-[75vw] h-[82vh] mt-2.5 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/80 p-6 shadow-2xl shadow-black/40">
-          <p className="mb-4 font-sans text-sm font-semibold text-zinc-200">
-            Notifications
-          </p>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <p className="font-sans text-sm font-semibold text-zinc-200">
+              Notifications
+            </p>
+            {pushPermission === null ? (
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs text-zinc-500">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Checking…
+              </span>
+            ) : pushPermission === "unsupported" ? (
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs text-zinc-500">
+                <BellOff className="h-3.5 w-3.5" />
+                Push unavailable
+              </span>
+            ) : pushPermission === "denied" ? (
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs text-zinc-500" title="Notifications blocked in browser settings">
+                <BellOff className="h-3.5 w-3.5" />
+                Notifications blocked in browser settings
+              </span>
+            ) : pushPermission === "granted" && pushSubscribed ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-400">
+                  <Bell className="h-3.5 w-3.5" />
+                  Push enabled
+                </span>
+                <button
+                  type="button"
+                  onClick={handleDisablePush}
+                  disabled={pushBusy}
+                  className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-200 disabled:opacity-50"
+                >
+                  {pushBusy ? "Disabling…" : "Disable"}
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={handleEnablePush}
+                disabled={pushBusy}
+                className="inline-flex items-center gap-2 rounded-full bg-green-600 px-4 py-1.5 text-xs font-semibold text-zinc-950 transition-colors hover:bg-green-500 disabled:opacity-50"
+              >
+                {pushBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bell className="h-3.5 w-3.5" />}
+                {pushBusy ? "Enabling…" : "Enable push"}
+              </button>
+            )}
+          </div>
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden items-center justify-center py-2 ">
             {notifications.length === 0 ? (
               <p className="text-md text-zinc-500">No notifications yet.</p>

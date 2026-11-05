@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUserFollowing } from "@/lib/github";
+import { completeExpiredRivalries } from "@/lib/rivalry";
 
 const SUGGESTION_LIMIT = 5;
 
@@ -63,7 +64,9 @@ export async function GET() {
     pending.flatMap((r) => [r.user1_id, r.user2_id])
   );
 
-  // Users locked in an ACTIVE rivalry can't be challenged.
+  // Users locked in an ACTIVE rivalry can't be challenged. Sweep finished
+  // matches first so an expired one no longer counts as a lock.
+  await completeExpiredRivalries().catch(() => 0);
   const activeRows = await prisma.rivalry.findMany({
     where: { status: "ACTIVE" },
     select: { user1_id: true, user2_id: true },

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { completeExpiredRivalries } from "@/lib/rivalry";
 
 // Send a rivalry request. The sender becomes user1 (requester convention).
 export async function POST(req) {
@@ -46,6 +47,9 @@ export async function POST(req) {
       { status: 404 }
     );
   }
+
+  // A rivalry that has already run its 6 months must not block a new challenge.
+  await completeExpiredRivalries().catch(() => 0);
 
   const ids = [dbUser.id, opponent.id];
 
