@@ -2,7 +2,7 @@
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUserContributionDays, getUserData } from "@/lib/github";
-import { toChartCommits } from "@/lib/commits";
+import { listUserRepositories } from "@/lib/repos";
 import DashboardClient from "./DashboardClient";
 import { getGitHubAccessToken } from "@/lib/github-token";
 
@@ -34,26 +34,8 @@ export default async function DashboardPage() {
 
   // Fetch everything for this verified user directly from the DB,
   // plus the GitHub avatar + bio for the sidebar / profile card.
-  const [dbRepos, dbActivities, dbRivalry, githubProfile] = await Promise.all([
-    prisma.repository.findMany({
-      where: { user_id: dbUser.github_username },
-      orderBy: [{ pushed_at: "desc" }, { github_created_at: "desc" }],
-      select: {
-        name: true,
-        full_name: true,
-        description: true,
-        language: true,
-        is_fork: true,
-        is_contributor: true,
-        github_url: true,
-        github_created_at: true,
-        archived: true,
-        default_branch: true,
-        private: true,
-        pushed_at: true,
-        commits: true,
-      },
-    }),
+  const [repositories, dbActivities, dbRivalry, githubProfile] = await Promise.all([
+    listUserRepositories(dbUser.github_username),
     prisma.activity.findMany({
       where: { user_id: dbUser.id },
       orderBy: { created_at: "desc" },
@@ -98,21 +80,6 @@ export default async function DashboardPage() {
     current_streak: dbUser.current_streak,
     longest_streak: dbUser.longest_streak,
   };
-
-  const repositories = dbRepos.map((repo) => ({
-    name: repo.name,
-    fullName: repo.full_name,
-    description: repo.description,
-    language: repo.language,
-    isFork: repo.is_fork,
-    isContributor: repo.is_contributor,
-    githubUrl: repo.github_url,
-    private: repo.private,
-    archived: repo.archived,
-    defaultBranch: repo.default_branch,
-    pushedAt: repo.pushed_at?.toISOString() ?? null,
-    commits: toChartCommits(repo.commits),
-  }));
 
   const activities = dbActivities.map((a) => ({
     id: a.id,

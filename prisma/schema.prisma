@@ -90,6 +90,7 @@ model Repository {
   github_created_at DateTime
   // [{ sha, message, url, author, committed_at }]
   commits           Json?
+  commits_author_filtered Boolean @default(false)
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
   private           Boolean   @default(false)

@@ -157,6 +157,9 @@ export default function DashboardClient({ user, repositories = [], activities = 
     return "Home";
   });
   const [activeRect, setActiveRect] = useState(null);
+  const [repoList, setRepoList] = useState(repositories);
+  const [reposLoading, setReposLoading] = useState(false);
+  const [reposError, setReposError] = useState(null);
   const navRef = useRef(null);
   const itemRefs = useRef({});
 
@@ -188,6 +191,40 @@ export default function DashboardClient({ user, repositories = [], activities = 
     if (item) observer.observe(item);
     return () => observer.disconnect();
   }, [activeItem, sidebarOpen, friendsOpen, notificationsOpen]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadRepositories() {
+      setReposLoading(true);
+      setReposError(null);
+      try {
+        const response = await fetch("/api/repositories", {
+          credentials: "same-origin",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error(`Request failed (${response.status})`);
+        }
+        const data = await response.json();
+        if (Array.isArray(data?.repositories)) {
+          setRepoList(data.repositories);
+        }
+      } catch (error) {
+        if (error?.name !== "AbortError") {
+          setReposError(error?.message ?? "Failed to load repositories");
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setReposLoading(false);
+        }
+      }
+    }
+
+    loadRepositories();
+    return () => controller.abort();
+  }, []);
 
   // Server data wins, client session is the fallback (e.g. after client-side refresh).
   const displayName = user?.githubUsername ?? session?.user?.githubUsername ?? session?.user?.name ?? "you";
@@ -494,16 +531,28 @@ export default function DashboardClient({ user, repositories = [], activities = 
                 Repositories
               </p>
               <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden items-center py-2 ">
-                {repositories.length === 0 ? (
-                  <div className="flex max-w-sm flex-col items-center gap-3 py-10 text-center">
-                    <p className="text-sm text-zinc-400">No repositories are saved yet.</p>
-                    <p className="text-xs text-zinc-600">Authorize the Pushr GitHub App to sync repositories you have granted it access to.</p>
-                    <a href="/api/github/start-installation" className="rounded-md border border-green-500/40 px-3 py-2 text-xs font-medium text-green-300 hover:bg-green-500/10">
-                      Connect GitHub App
-                    </a>
-                  </div>
+                {reposLoading && (
+                  <p role="status" className="text-xs text-zinc-500">
+                    Refreshing repositories…
+                  </p>
+                )}
+                {reposError && (
+                  <p role="alert" className="text-xs text-red-400">
+                    Could not load repositories: {reposError}
+                  </p>
+                )}
+                {repoList.length === 0 ? (
+                  !reposLoading && !reposError && (
+                    <div className="flex max-w-sm flex-col items-center gap-3 py-10 text-center">
+                      <p className="text-sm text-zinc-400">No repositories are saved yet.</p>
+                      <p className="text-xs text-zinc-600">Authorize the Pushr GitHub App to sync repositories you have granted it access to.</p>
+                      <a href="/api/github/start-installation" className="rounded-md border border-green-500/40 px-3 py-2 text-xs font-medium text-green-300 hover:bg-green-500/10">
+                        Connect GitHub App
+                      </a>
+                    </div>
+                  )
                 ) : (
-                  repositories.map((repo) => (
+                  repoList.map((repo) => (
                     <div
                       key={repo.fullName}
                       className="h-fit shrink-0 hover:scale-105  w-[95%] border border-green-500/40 bg-zinc-900/60 p-3 shadow-lg shadow-green-950/20 transition-all duration-300 cursor-pointer rounded-sm"
@@ -520,11 +569,8 @@ export default function DashboardClient({ user, repositories = [], activities = 
                         </HoverBorderGradient>
                       </div >
                       <div className="mb-2 flex flex-wrap gap-2 text-[11px] text-zinc-500">
-                        {repo.language && <span>{repo.language}</span>}
-                        {repo.isContributor && <span>Contributor</span>}
                         {repo.private && <span>Private</span>}
                         {repo.archived && <span>Archived</span>}
-                        {repo.defaultBranch && <span>Default: {repo.defaultBranch}</span>}
                         {repo.description && <span className="basis-full">{repo.description}</span>}
                       </div>
                       <div className="rounded-lg border border-zinc-800 p-1.5">

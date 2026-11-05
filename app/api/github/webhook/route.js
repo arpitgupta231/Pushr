@@ -5,6 +5,8 @@ import { appendRepositoryCommits } from "@/lib/commits";
 import { upsertRepository, findRepositoryId } from "@/lib/repos";
 import { getActivityPoints, updateRivalryScore } from "@/lib/rivalry";
 import { createRivalActivityNotification } from "@/lib/notifications";
+import { getRepoCommitBySha, toCommitRecord } from "@/lib/github";
+import { getGitHubAccessToken } from "@/lib/github-token";
 
 export const runtime = "nodejs";
 
@@ -73,10 +75,7 @@ export async function POST(request) {
       if (ownerLogins.size === 0 && repository.owner?.login) ownerLogins.add(repository.owner.login);
       for (const ownerLogin of ownerLogins) {
         if (!await prisma.user.findUnique({ where: { github_username: ownerLogin }, select: { id: true } })) continue;
-        const saved = await upsertRepository(repository, ownerLogin);
-        if (saved && event === "push") {
-          await appendRepositoryCommits(saved.id, (payload.commits ?? []).map((c) => ({ sha: c.id, message: c.message, url: c.url, author: c.author?.name ?? null, committed_at: c.timestamp })));
-        }
+        await upsertRepository(repository, ownerLogin);
       }
     }
   }
@@ -85,6 +84,24 @@ export async function POST(request) {
   if (!activity) return NextResponse.json({ ok: true, ignored: true });
   const user = await prisma.user.findUnique({ where: { github_username: activity.actor } });
   if (!user) return NextResponse.json({ ok: true, ignored: true });
+  if (activity.type === "PUSH") {
+    const [owner, repoName] = String(repository?.full_name ?? "").split("/");
+    const accessToken = await getGitHubAccessToken(user.id).catch(() => null);
+    const ownCommits = [];
+    if (owner && repoName && accessToken) {
+      for (const pushedCommit of activity.commits) {
+        const rawCommit = await getRepoCommitBySha(owner, repoName, pushedCommit.sha, accessToken);
+        if (rawCommit?.author?.login?.toLowerCase() !== activity.actor.toLowerCase()) continue;
+        const commit = toCommitRecord(rawCommit, repository.full_name);
+        if (commit) ownCommits.push(commit);
+      }
+    }
+    activity.commits = ownCommits;
+    activity.metadata.commits = ownCommits;
+    activity.metadata.commitCount = ownCommits.length;
+    const ownRepositoryId = await findRepositoryId(Number(repository?.id), activity.actor);
+    if (ownRepositoryId) await appendRepositoryCommits(ownRepositoryId, ownCommits);
+  }
   const repositoryId = Number(repository?.id) > 0 ? await findRepositoryId(Number(repository.id), activity.actor) : null;
   const points = getActivityPoints(activity.type, activity.metadata);
   let storedActivity;

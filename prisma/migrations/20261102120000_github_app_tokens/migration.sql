@@ -25,3 +25,4 @@ ALTER TABLE "Notification" ADD CONSTRAINT "Notification_activity_id_fkey" FOREIG
 ALTER TABLE "Repository" ADD COLUMN "is_contributor" BOOLEAN NOT NULL DEFAULT false;
 DROP INDEX IF EXISTS "Repository_github_repo_id_key";
 CREATE UNIQUE INDEX "Repository_github_repo_id_user_id_key" ON "Repository"("github_repo_id", "user_id");
+ALTER TABLE "Repository" ADD COLUMN "commits_author_filtered" BOOLEAN NOT NULL DEFAULT false;
