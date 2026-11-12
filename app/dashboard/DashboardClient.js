@@ -604,19 +604,27 @@ export default function DashboardClient({ user, repositories = [], activities = 
                   repoList.map((repo) => (
                     <div
                       key={repo.fullName}
-                      className="h-fit shrink-0 hover:scale-105  w-[95%] border border-green-500/40 bg-zinc-900/60 p-3 shadow-lg shadow-green-950/20 transition-all duration-300 cursor-pointer rounded-sm"
+                      onClick={() => {
+                        if (repo.id) {
+                          router.push(`/repositories/${repo.id}`);
+                        }
+                      }}
+                      className="h-fit shrink-0 hover:scale-[1.02] w-[95%] border border-green-500/40 bg-zinc-900/60 p-3 shadow-lg shadow-green-950/20 transition-all duration-300 cursor-pointer rounded-sm hover:border-green-400"
                     >
                       <div className="mb-2 flex items-center justify-between gap-4 rounded-lg">
                         <p className="text-2xl font-semibold text-zinc-200">
                           {repo.fullName}
                         </p>
                         <HoverBorderGradient
-                          onClick={() => window.open(repo.githubUrl, "_blank", "noopener,noreferrer")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(repo.githubUrl, "_blank", "noopener,noreferrer");
+                          }}
                           className="text-xs"
                         >
                           Open in GitHub
                         </HoverBorderGradient>
-                      </div >
+                      </div>
                       <div className="mb-2 flex flex-wrap gap-2 text-[11px] text-zinc-500">
                         {repo.private && <span>Private</span>}
                         {repo.archived && <span>Archived</span>}
